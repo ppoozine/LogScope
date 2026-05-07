@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogScope — Platform Design Document v1.1</title>
+<style>
+  :root {
+    --purple: #534AB7; --purple-light: #EEEDFE; --purple-mid: #CECBF6;
+    --teal: #0F6E56; --teal-light: #E1F5EE; --teal-mid: #9FE1CB;
+    --amber: #854F0B; --amber-light: #FAEEDA; --amber-mid: #FAC775;
+    --coral: #993C1D; --coral-light: #FAECE7;
+    --blue: #185FA5; --blue-light: #E6F1FB;
+    --green: #3B6D11; --green-light: #EAF3DE;
+    --gray: #5F5E5A; --gray-light: #F1EFE8; --gray-mid: #D3D1C7;
+    --text: #1A1A1A; --text-2: #444; --text-3: #888780; --text-4: #B4B2A9;
+    --border: #DDDDDD; --bg: #F5F5F3; --white: #ffffff;
+    --radius: 8px; --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; font-size: 15px; line-height: 1.7; color: var(--text); background: #fafaf9; }
+  .page { max-width: 900px; margin: 0 auto; padding: 40px 32px 80px; }
+
+  /* Cover */
+  .cover { padding: 60px 0 48px; border-bottom: 1px solid var(--border); margin-bottom: 48px; }
+  .cover-logo { font-size: 52px; font-weight: 700; color: var(--purple); letter-spacing: -1px; }
+  .cover-sub { font-size: 22px; color: var(--text-3); margin-top: 6px; }
+  .cover-ver { font-size: 14px; color: var(--text-4); margin-top: 8px; }
+  .cover-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 32px; }
+  .meta-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+  .meta-label { font-size: 11px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
+  .meta-val { font-size: 14px; color: var(--text); }
+
+  /* Nav TOC */
+  .toc { background: var(--purple-light); border-radius: var(--radius-lg); padding: 20px 24px; margin-bottom: 48px; }
+  .toc-title { font-size: 12px; font-weight: 600; color: var(--purple); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 12px; }
+  .toc-list { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  .toc-list a { font-size: 13px; color: var(--purple); text-decoration: none; }
+  .toc-list a:hover { text-decoration: underline; }
+
+  /* Section */
+  .section { margin-bottom: 56px; }
+  h1 { font-size: 28px; font-weight: 700; color: var(--text); margin-bottom: 6px; padding-top: 16px; border-top: 2px solid var(--purple); }
+  h1 .num { color: var(--purple); margin-right: 8px; }
+  h2 { font-size: 19px; font-weight: 600; color: var(--text); margin: 28px 0 10px; }
+  h3 { font-size: 15px; font-weight: 600; color: var(--purple); margin: 20px 0 8px; }
+  p { margin-bottom: 12px; color: var(--text-2); }
+  ul { padding-left: 20px; margin-bottom: 12px; }
+  li { margin-bottom: 5px; color: var(--text-2); font-size: 14px; }
+
+  /* Info boxes */
+  .infobox { border-radius: var(--radius); padding: 14px 18px; margin: 16px 0; }
+  .infobox-purple { background: var(--purple-light); border-left: 3px solid var(--purple); }
+  .infobox-teal { background: var(--teal-light); border-left: 3px solid var(--teal); }
+  .infobox-amber { background: var(--amber-light); border-left: 3px solid var(--amber); }
+  .infobox-label { font-size: 12px; font-weight: 700; color: var(--purple); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 5px; }
+  .infobox-teal .infobox-label { color: var(--teal); }
+  .infobox-amber .infobox-label { color: var(--amber); }
+  .infobox p { font-size: 13px; color: var(--text-2); margin: 0; }
+
+  /* Note */
+  .note { border-left: 3px solid var(--purple-mid); padding: 8px 14px; margin: 12px 0; background: var(--purple-light); border-radius: 0 var(--radius) var(--radius) 0; font-size: 13px; color: var(--text-3); font-style: italic; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { background: var(--purple); color: white; padding: 9px 12px; text-align: left; font-weight: 600; }
+  td { padding: 8px 12px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--bg); }
+  td:first-child { font-weight: 600; color: var(--purple); white-space: nowrap; }
+
+  /* Figure */
+  .figure { margin: 24px 0; }
+  .figure svg { width: 100%; height: auto; display: block; border-radius: var(--radius-lg); border: 1px solid var(--border); background: white; }
+  .figure-caption { text-align: center; font-size: 12px; color: var(--text-4); margin-top: 6px; font-style: italic; }
+
+  /* Mockup shell */
+  .mockup { border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; margin: 20px 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; background: var(--bg); }
+  .mockup-bar { display: flex; align-items: center; gap: 10px; padding: 8px 14px; background: white; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .mockup-logo { font-weight: 700; color: var(--purple); font-size: 13px; }
+  .mockup-nav span { padding: 3px 9px; border-radius: 5px; cursor: pointer; color: var(--text-3); }
+  .mockup-nav span.active { background: var(--teal-light); color: var(--teal); font-weight: 600; }
+  .mockup-body { display: grid; }
+  .pane { border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .pane:last-child { border-right: none; }
+  .pane-head { padding: 6px 12px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 10px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; display: flex; align-items: center; justify-content: space-between; }
+  .pane-body { padding: 10px 12px; font-family: 'SF Mono', 'Fira Code', monospace; font-size: 11px; line-height: 1.8; flex: 1; background: white; overflow: hidden; }
+  .pane-foot { padding: 5px 12px; border-top: 1px solid var(--border); font-size: 10px; color: var(--text-3); background: var(--bg); display: flex; justify-content: space-between; align-items: center; }
+  .kw { color: var(--purple); }
+  .fd { color: var(--teal); }
+  .st { color: var(--amber); }
+  .cm { color: var(--text-4); font-style: italic; }
+  .ln { color: var(--text-4); display: inline-block; width: 20px; text-align: right; margin-right: 8px; user-select: none; }
+  .ok { color: var(--teal); }
+  .match-bar { display: flex; align-items: center; gap: 8px; padding: 6px 14px; background: var(--bg); border-bottom: 1px solid var(--border); font-size: 12px; }
+  .match-pill { display: flex; align-items: center; gap: 5px; background: white; border: 1px solid var(--border); border-radius: 6px; padding: 3px 9px; font-size: 11px; }
+  .conf-hi { color: var(--teal); font-weight: 600; }
+  .conf-lo { color: var(--text-4); }
+  .btn-apply { background: var(--purple); color: white; border: none; border-radius: 5px; padding: 4px 10px; font-size: 11px; cursor: pointer; margin-left: auto; }
+  .kv-sec { font-size: 9px; font-weight: 700; color: var(--text-4); text-transform: uppercase; letter-spacing: .06em; margin: 8px 0 3px; }
+  .kv { display: flex; gap: 8px; font-size: 11px; padding: 1px 0; }
+  .kv-k { color: var(--purple); min-width: 80px; flex-shrink: 0; }
+  .kv-v-s { color: var(--teal); }
+  .kv-v-n { color: var(--amber); }
+
+  /* Library list mockup */
+  .lib-shell { border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; background: var(--bg); font-size: 12px; }
+  .lib-head { display: flex; align-items: center; gap: 8px; padding: 7px 14px; background: white; border-bottom: 1px solid var(--border); }
+  .lib-body { display: flex; min-height: 340px; }
+  .lib-sidebar { width: 160px; flex-shrink: 0; background: white; border-right: 1px solid var(--border); padding: 12px; }
+  .lib-main { flex: 1; padding: 12px 14px; overflow: hidden; }
+  .lib-filter-sec { margin-bottom: 12px; }
+  .lib-filter-label { font-size: 9px; font-weight: 700; color: var(--text-4); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  .lib-filter-item { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 11px; color: var(--text-3); }
+  .lib-filter-item.active { color: var(--text); font-weight: 600; }
+  .fcount { font-size: 10px; background: var(--bg); padding: 1px 5px; border-radius: 8px; color: var(--text-3); }
+  .lib-search-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .lib-search { flex: 1; padding: 5px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); font-size: 12px; color: var(--text-3); }
+  .btn-add { padding: 4px 10px; border: 1px solid var(--border); border-radius: var(--radius); background: white; font-size: 11px; color: var(--text); }
+  .btn-ai { padding: 4px 10px; border: 1px solid var(--purple); border-radius: var(--radius); background: var(--purple); font-size: 11px; color: white; }
+  .vendor-group { margin-bottom: 14px; }
+  .vendor-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+  .vendor-av { width: 26px; height: 26px; border-radius: 5px; background: var(--bg); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: var(--text-3); flex-shrink: 0; }
+  .vendor-name { font-size: 12px; font-weight: 600; color: var(--text); }
+  .vendor-meta { font-size: 10px; color: var(--text-4); }
+  .product-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+  .product-card { background: white; border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; }
+  .product-card.missing { border-style: dashed; }
+  .pc-name { font-size: 11px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .pc-tags { display: flex; gap: 3px; margin-bottom: 5px; flex-wrap: wrap; }
+  .tag { font-size: 9px; padding: 1px 6px; border-radius: 8px; }
+  .tag-net { background: var(--blue-light); color: var(--blue); }
+  .tag-auth { background: var(--amber-light); color: var(--amber); }
+  .tag-end { background: var(--green-light); color: var(--green); }
+  .pc-foot { display: flex; justify-content: space-between; align-items: center; }
+  .pc-count { font-size: 10px; color: var(--text-4); }
+  .status { font-size: 9px; padding: 1px 7px; border-radius: 8px; }
+  .status-pub { background: var(--teal-light); color: var(--teal); }
+  .status-draft { background: var(--amber-light); color: var(--amber); }
+  .status-missing { background: var(--bg); color: var(--text-4); border: 1px solid var(--border); }
+
+  /* Pipeline vis */
+  .pipeline { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 20px 0; }
+  .pip-stage { display: flex; align-items: center; gap: 14px; width: 100%; max-width: 560px; }
+  .pip-num { font-size: 11px; color: var(--text-4); width: 24px; text-align: right; flex-shrink: 0; }
+  .pip-box { flex: 1; border-radius: var(--radius); padding: 10px 16px; border: 1px solid; }
+  .pip-gray { background: var(--gray-light); border-color: var(--gray-mid); }
+  .pip-blue { background: var(--blue-light); border-color: #85B7EB; }
+  .pip-purple { background: var(--purple-light); border-color: var(--purple-mid); }
+  .pip-amber { background: var(--amber-light); border-color: var(--amber-mid); }
+  .pip-teal { background: var(--teal-light); border-color: var(--teal-mid); }
+  .pip-title { font-size: 13px; font-weight: 600; color: var(--text); }
+  .pip-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+  .pip-arrow { display: flex; align-items: center; justify-content: center; padding: 2px 0 2px 38px; color: var(--text-4); font-size: 16px; }
+  .pip-sidenote { font-size: 10px; color: var(--text-4); width: 130px; flex-shrink: 0; line-height: 1.4; }
+  .status-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 16px; }
+  .status-pill { font-size: 11px; padding: 4px 14px; border-radius: 16px; border: 1px solid; }
+
+  /* Copilot panel */
+  .copilot-shell { border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; background: white; max-width: 380px; }
+  .copilot-head { display: flex; align-items: center; justify-content: space-between; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+  .copilot-title { font-size: 13px; font-weight: 600; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .copilot-title span { color: var(--purple); }
+  .ctx-strip { padding: 8px 12px; background: var(--bg); border-bottom: 1px solid var(--border); }
+  .ctx-label { font-size: 9px; font-weight: 700; color: var(--text-4); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  .ctx-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+  .ctx-pill { font-size: 10px; padding: 2px 8px; border-radius: 10px; border: 1px solid var(--border); background: white; color: var(--text-3); }
+  .ctx-pill.active { background: var(--blue-light); border-color: #85B7EB; color: var(--blue); }
+  .msgs { padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; }
+  .msg-role { font-size: 9px; font-weight: 700; color: var(--text-4); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+  .msg-bubble { font-size: 12px; line-height: 1.55; padding: 8px 10px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg); color: var(--text-2); }
+  .msg-user .msg-bubble { background: var(--blue-light); border-color: #85B7EB; }
+  .code-snip { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 6px 10px; font-family: 'SF Mono', monospace; font-size: 10px; line-height: 1.7; margin-top: 6px; }
+  .action-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+  .chip { font-size: 10px; padding: 3px 8px; border-radius: var(--radius); border: 1px solid var(--border); background: white; cursor: pointer; color: var(--text-3); }
+  .chip.primary { background: var(--blue-light); border-color: #85B7EB; color: var(--blue); }
+  .quick-row { display: flex; gap: 5px; flex-wrap: wrap; padding: 8px 12px; border-top: 1px solid var(--border); background: var(--bg); }
+  .quick-btn { font-size: 10px; padding: 3px 8px; border-radius: 10px; border: 1px solid var(--border); background: white; color: var(--text-3); }
+  .input-row { display: flex; gap: 6px; padding: 8px 12px; }
+  .chat-in { flex: 1; font-size: 12px; padding: 6px 10px; border-radius: var(--radius); border: 1px solid var(--border); }
+  .send-btn { background: var(--purple); color: white; border: none; border-radius: var(--radius); padding: 6px 12px; font-size: 12px; }
+
+  /* Layout helpers */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin: 16px 0; }
+  .three-col { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin: 16px 0; }
+  .skill-card { border-radius: var(--radius-lg); padding: 16px; }
+  .skill-card-purple { background: var(--purple-light); border: 1px solid var(--purple-mid); }
+  .skill-card-teal { background: var(--teal-light); border: 1px solid var(--teal-mid); }
+  .skill-card-amber { background: var(--amber-light); border: 1px solid var(--amber-mid); }
+  .skill-title { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+  .skill-card-purple .skill-title { color: var(--purple); }
+  .skill-card-teal .skill-title { color: var(--teal); }
+  .skill-card-amber .skill-title { color: var(--amber); }
+  .skill-row { font-size: 11px; padding: 5px 8px; border-radius: 5px; margin-bottom: 4px; }
+  .skill-card-purple .skill-row { background: var(--purple-mid); color: #3C3489; }
+  .skill-card-teal .skill-row { background: var(--teal-mid); color: #085041; }
+  .skill-card-amber .skill-row { background: var(--amber-mid); color: #633806; }
+  .skill-row b { display: block; margin-bottom: 1px; }
+  .trigger-note { font-size: 10px; color: var(--text-4); margin-top: 10px; padding-top: 8px; border-top: 1px solid rgba(0,0,0,.08); }
+
+  /* Page routes */
+  .route-list { list-style: none; padding: 0; }
+  .route-item { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 13px; align-items: baseline; }
+  .route-path { font-family: 'SF Mono', monospace; font-size: 12px; color: var(--purple); white-space: nowrap; min-width: 260px; flex-shrink: 0; }
+  .route-desc { color: var(--text-2); }
+
+  /* Footer */
+  .footer { margin-top: 64px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-4); display: flex; justify-content: space-between; }
+
+  @media print {
+    body { font-size: 13px; }
+    .page { padding: 20px; }
+    .section { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- COVER -->
+  <div class="cover">
+    <div class="cover-logo">LogScope</div>
+    <div class="cover-sub">Platform Design Document</div>
+    <div class="cover-ver">v1.2 &nbsp;·&nbsp; May 2026</div>
+    <div class="cover-meta">
+      <div class="meta-card"><div class="meta-label">核心模組</div><div class="meta-val">Log 分析器、特徵庫 Library、LLM Copilot</div></div>
+      <div class="meta-card"><div class="meta-label">主要對象</div><div class="meta-val">安全工程師、SOC 分析師、處理多種 vendor log 的開發者</div></div>
+      <div class="meta-card"><div class="meta-label">設計原則</div><div class="meta-val">功能聚焦，不做 SIEM 的所有功能；特徵庫是核心資產</div></div>
+      <div class="meta-card"><div class="meta-label">文件用途</div><div class="meta-val">供 Claude Design（UI/UX）與 Claude Code（技術）使用</div></div>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <div class="toc-title">目錄</div>
+    <ul class="toc-list">
+      <li><a href="#s1">1. 平台架構概覽</a></li>
+      <li><a href="#s2">2. 特徵庫 Library</a></li>
+      <li><a href="#s3">3. LLM 建庫 Pipeline</a></li>
+      <li><a href="#s4">4. Log 分析器</a></li>
+      <li><a href="#s5">5. LLM Copilot</a></li>
+      <li><a href="#s6">6. 頁面清單</a></li>
+      <li><a href="#s7">7. 給 Claude Design 的備忘</a></li>
+      <li><a href="#s8">8. 給 Claude Code 的備忘</a></li>
+    </ul>
+  </div>
+
+  <!-- 1 -->
+  <div class="section" id="s1">
+    <h1><span class="num">1.</span>平台架構概覽</h1>
+    <p>LogScope 由三個核心模組組成，彼此緊密整合：</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>模組</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td>Log 分析器</td><td>輸入 VRL 和 raw log，即時 parse 並顯示結果。核心體驗是左右分欄的即時循環：VRL 編輯 → parse → 結果預覽。</td></tr>
+        <tr><td>特徵庫 Library</td><td>管理所有 vendor/product 的 log 特徵。支援手動建立和 LLM 自動爬取兩種建庫方式，並有 Review 機制控管品質。</td></tr>
+        <tr><td>LLM Copilot</td><td>全平台感知的 AI 助手。根據當前頁面自動調整脈絡，提供 VRL 生成、log 解釋、Library 比對三個核心技能。</td></tr>
+      </tbody>
+    </table></div>
+    <h2>1.1 模組關係圖</h2>
+    <div class="figure">
+      <svg viewBox="0 0 680 560" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system,Arial,sans-serif">
+        <defs><marker id="arr1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M2 1L8 5L2 9" fill="none" stroke="#888780" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+        <rect x="180" y="30" width="320" height="68" rx="10" fill="#E1F5EE" stroke="#0F6E56" stroke-width="1"/>
+        <text x="340" y="58" text-anchor="middle" font-size="15" font-weight="600" fill="#085041">Log 分析器</text>
+        <text x="340" y="78" text-anchor="middle" font-size="12" fill="#0F6E56">VRL editor · parse 預覽 · Library 自動比對</text>
+        <rect x="30" y="200" width="280" height="180" rx="10" fill="#EEEDFE" stroke="#534AB7" stroke-width="1"/>
+        <text x="170" y="228" text-anchor="middle" font-size="15" font-weight="600" fill="#3C3489">特徵庫 Library</text>
+        <rect x="48" y="244" width="244" height="38" rx="6" fill="#CECBF6" stroke="#AFA9EC" stroke-width="0.5"/>
+        <text x="170" y="267" text-anchor="middle" font-size="12" fill="#3C3489">Vendor / Product 資訊</text>
+        <rect x="48" y="290" width="244" height="38" rx="6" fill="#CECBF6" stroke="#AFA9EC" stroke-width="0.5"/>
+        <text x="170" y="313" text-anchor="middle" font-size="12" fill="#3C3489">Log 欄位 schema + VRL rules</text>
+        <rect x="48" y="336" width="244" height="38" rx="6" fill="#CECBF6" stroke="#AFA9EC" stroke-width="0.5"/>
+        <text x="170" y="359" text-anchor="middle" font-size="12" fill="#3C3489">Sample logs + event types</text>
+        <rect x="370" y="200" width="280" height="180" rx="10" fill="#FAEEDA" stroke="#854F0B" stroke-width="1"/>
+        <text x="510" y="228" text-anchor="middle" font-size="15" font-weight="600" fill="#633806">LLM 建庫 Pipeline</text>
+        <rect x="388" y="244" width="244" height="38" rx="6" fill="#FAC775" stroke="#EF9F27" stroke-width="0.5"/>
+        <text x="510" y="267" text-anchor="middle" font-size="12" fill="#633806">輸入 vendor → 爬官方文件</text>
+        <rect x="388" y="290" width="244" height="38" rx="6" fill="#FAC775" stroke="#EF9F27" stroke-width="0.5"/>
+        <text x="510" y="313" text-anchor="middle" font-size="12" fill="#633806">產出 draft 特徵庫 + VRL</text>
+        <rect x="388" y="336" width="244" height="38" rx="6" fill="#FAC775" stroke="#EF9F27" stroke-width="0.5"/>
+        <text x="510" y="359" text-anchor="middle" font-size="12" fill="#633806">Review → Publish</text>
+        <rect x="180" y="468" width="320" height="68" rx="10" fill="#FAECE7" stroke="#993C1D" stroke-width="1"/>
+        <text x="340" y="496" text-anchor="middle" font-size="15" font-weight="600" fill="#712B13">LLM Copilot</text>
+        <text x="340" y="516" text-anchor="middle" font-size="12" fill="#993C1D">寫 VRL · 解釋 log · 推薦 Library 規則</text>
+        <path d="M190 80 L160 198" fill="none" stroke="#888780" stroke-width="1.2" marker-end="url(#arr1)"/>
+        <text x="142" y="155" text-anchor="middle" font-size="11" fill="#888780">套用規則</text>
+        <path d="M374 300 L314 300" fill="none" stroke="#888780" stroke-width="1.2" marker-end="url(#arr1)"/>
+        <text x="344" y="292" text-anchor="middle" font-size="11" fill="#888780">publish</text>
+        <path d="M340 98 L340 466" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="4 3"/>
+        <path d="M490 80 L516 198" fill="none" stroke="#888780" stroke-width="1.2" marker-end="url(#arr1)"/>
+        <text x="534" y="155" text-anchor="middle" font-size="11" fill="#888780">觸發建庫</text>
+        <path d="M235 536 L158 382" fill="none" stroke="#888780" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#arr1)"/>
+      </svg>
+      <div class="figure-caption">圖 1-1  LogScope 三模組架構與資料流向</div>
+    </div>
+    <h2>1.2 模組關係說明</h2>
+    <ul>
+      <li>Log 分析器可從 Library 一鍵載入 VRL rule 和 sample log</li>
+      <li>分析器磨好的 VRL 可存回 Library，形成閉環</li>
+      <li>Copilot 的脈絡依照當前頁面自動切換，可直接操作分析器</li>
+      <li>Library 的 match bar 在分析器中自動比對，推薦對應 product</li>
+    </ul>
+  </div>
+
+  <!-- 2 -->
+  <div class="section" id="s2">
+    <h1><span class="num">2.</span>特徵庫 Library</h1>
+    <p>Library 是整個平台的核心資產，採用三層結構：Vendor → Product → Log Type。</p>
+    <h2>2.1 資料結構（ERD 摘要）</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>資料表</th><th>層級</th><th>重要欄位</th></tr></thead>
+      <tbody>
+        <tr><td>VENDOR</td><td>頂層</td><td>name、slug、category、website_url、logo_url、status</td></tr>
+        <tr><td>PRODUCT</td><td>Vendor 下</td><td>vendor_id、name、version、description、deploy_type、doc_url、status</td></tr>
+        <tr><td>LOG_TYPE</td><td>核心表</td><td>product_id、name、format、transport、status、source、reviewed_by、published_at</td></tr>
+        <tr><td>FIELD_SCHEMA</td><td>Log 欄位定義</td><td>log_type_id、field_name、field_type、is_required、is_identifier、example_value、sort_order</td></tr>
+        <tr><td>PARSE_RULE</td><td>VRL 版本</td><td>log_type_id、vrl_code、version、status、created_by、updated_at</td></tr>
+        <tr><td>SAMPLE_LOG</td><td>Sample 集合</td><td>log_type_id、raw_log、label（normal/edge_case/error）、added_by</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note">LOG_TYPE.format 記錄原始格式（syslog、json、cef、leef、csv），直接影響 VRL 寫法。FIELD_SCHEMA.is_identifier 標記識別欄位（src_ip、user 等），供 Copilot 和比對引擎使用。PARSE_RULE 獨立成表以支援版本迭代和 diff review。</div>
+
+    <h2>2.2 Library 列表頁</h2>
+    <div class="lib-shell">
+      <div class="lib-head">
+        <span style="font-weight:700;color:#534AB7;font-size:13px">LogScope</span>
+        <span style="padding:2px 9px;background:#E1F5EE;border-radius:5px;font-size:11px;font-weight:600;color:#085041">Library</span>
+        <span style="padding:2px 9px;font-size:11px;color:#888780">Analyzer</span>
+        <span style="padding:2px 9px;font-size:11px;color:#888780">Copilot</span>
+      </div>
+      <div class="lib-body">
+        <div class="lib-sidebar">
+          <div class="lib-filter-sec">
+            <div class="lib-filter-label">Log 類型</div>
+            <div class="lib-filter-item active"><span>全部</span><span class="fcount">24</span></div>
+            <div class="lib-filter-item"><span>Network</span><span class="fcount">11</span></div>
+            <div class="lib-filter-item"><span>Endpoint</span><span class="fcount">6</span></div>
+            <div class="lib-filter-item"><span>Auth</span><span class="fcount">4</span></div>
+          </div>
+          <div class="lib-filter-sec">
+            <div class="lib-filter-label">狀態</div>
+            <div class="lib-filter-item"><span>Published</span><span class="fcount">18</span></div>
+            <div class="lib-filter-item"><span>Draft</span><span class="fcount">4</span></div>
+            <div class="lib-filter-item"><span>未建庫</span><span class="fcount">2</span></div>
+          </div>
+          <div class="lib-filter-sec">
+            <div class="lib-filter-label">來源</div>
+            <div class="lib-filter-item"><span>手動建立</span><span class="fcount">9</span></div>
+            <div class="lib-filter-item"><span>LLM 生成</span><span class="fcount">13</span></div>
+          </div>
+        </div>
+        <div class="lib-main">
+          <div class="lib-search-row">
+            <div class="lib-search">搜尋 vendor、product 或 log 類型…</div>
+            <div class="btn-add">新增</div>
+            <div class="btn-ai">✦ AI 建庫</div>
+          </div>
+          <div class="vendor-group">
+            <div class="vendor-head">
+              <div class="vendor-av">PA</div>
+              <div><div class="vendor-name">Palo Alto Networks</div><div class="vendor-meta">3 products · 9 log types</div></div>
+            </div>
+            <div class="product-grid">
+              <div class="product-card"><div class="pc-name">PAN-OS</div><div class="pc-tags"><span class="tag tag-net">Network</span><span class="tag tag-auth">Auth</span></div><div class="pc-foot"><span class="pc-count">5 log types</span><span class="status status-pub">published</span></div></div>
+              <div class="product-card"><div class="pc-name">Prisma Access</div><div class="pc-tags"><span class="tag tag-net">Network</span></div><div class="pc-foot"><span class="pc-count">3 log types</span><span class="status status-pub">published</span></div></div>
+              <div class="product-card missing"><div class="pc-name">Cortex XDR</div><div class="pc-tags"><span class="tag tag-end">Endpoint</span></div><div class="pc-foot"><span class="pc-count">—</span><span class="status status-missing">未建庫</span></div></div>
+            </div>
+          </div>
+          <div class="vendor-group">
+            <div class="vendor-head">
+              <div class="vendor-av">FT</div>
+              <div><div class="vendor-name">Fortinet</div><div class="vendor-meta">2 products · 6 log types</div></div>
+            </div>
+            <div class="product-grid">
+              <div class="product-card"><div class="pc-name">FortiGate</div><div class="pc-tags"><span class="tag tag-net">Network</span></div><div class="pc-foot"><span class="pc-count">4 log types</span><span class="status status-pub">published</span></div></div>
+              <div class="product-card"><div class="pc-name">FortiAnalyzer</div><div class="pc-tags"><span class="tag tag-net">Network</span></div><div class="pc-foot"><span class="pc-count">2 log types</span><span class="status status-draft">draft</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="figure-caption" style="margin-top:6px">圖 2-1  Library 列表頁：Vendor 分組、三種卡片狀態、左側篩選</div>
+
+    <h2>2.3 Product 詳情頁重點</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>區塊</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td>Product hero 區</td><td>Vendor logo、產品名稱、版本、標籤、狀態、metadata（欄位數、log type 數、更新時間、來源、官方文件連結）</td></tr>
+        <tr><td>Log Type 標籤列</td><td>每個 log type 一個標籤頁，切換時下方所有內容同步更新（欄位清單、VRL、sample）</td></tr>
+        <tr><td>欄位清單</td><td>表格呈現 field_name、型別、說明、範例值。identifier 欄位加上紫色標籤以突顯</td></tr>
+        <tr><td>VRL Parse Rule</td><td>顯示目前版本的 VRL，附「載入 Analyzer」和「編輯」按鈕</td></tr>
+        <tr><td>Sample Logs</td><td>每筆 sample 顯示 label（normal/edge_case/error）和 raw log 預覽，附「在 Analyzer 試打」按鈕</td></tr>
+        <tr><td>右側 Copilot 卡片</td><td>Copilot 主動推送的警示與建議，如版本差異警告、sample 不足提醒</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- 3 -->
+  <div class="section" id="s3">
+    <h1><span class="num">3.</span>LLM 建庫 Pipeline</h1>
+    <p>LLM 是草稿機，人是守門員。設計原則：LLM 做苦工，人只做判斷。</p>
+    <h2>3.1 Pipeline 流程</h2>
+    <div class="pipeline">
+      <div class="pip-stage">
+        <div class="pip-num">01</div>
+        <div class="pip-box pip-gray"><div class="pip-title">觸發</div><div class="pip-sub">輸入 vendor / product · 選擇爬取深度</div></div>
+        <div class="pip-sidenote">快速 = 首頁<br>深度 = 全部 log ref</div>
+      </div>
+      <div class="pip-arrow">↓</div>
+      <div class="pip-stage">
+        <div class="pip-num">02</div>
+        <div class="pip-box pip-blue"><div class="pip-title">爬取 + 解析</div><div class="pip-sub">LLM 搜尋文件 · 抽取 log 結構 · 記錄來源 URL</div></div>
+        <div class="pip-sidenote">官方 docs<br>GitHub README<br>社群 parsers</div>
+      </div>
+      <div class="pip-arrow">↓</div>
+      <div class="pip-stage">
+        <div class="pip-num">03</div>
+        <div class="pip-box pip-purple"><div class="pip-title">草稿生成</div><div class="pip-sub">欄位清單 · VRL draft · sample logs · confidence 分數</div></div>
+        <div class="pip-sidenote">低信心項目<br>在 Review 介面<br>醒目標示</div>
+      </div>
+      <div class="pip-arrow">↓</div>
+      <div class="pip-stage">
+        <div class="pip-num">04</div>
+        <div class="pip-box pip-amber"><div class="pip-title">人工 Review</div><div class="pip-sub">三欄 diff 視圖 · 欄位逐一 approve/reject/edit · 支援 partial approve</div></div>
+        <div class="pip-sidenote">← 退回修改</div>
+      </div>
+      <div class="pip-arrow">↓</div>
+      <div class="pip-stage">
+        <div class="pip-num">05</div>
+        <div class="pip-box pip-teal"><div class="pip-title">發佈</div><div class="pip-sub">進入 Library · 建立 PARSE_RULE v1 · 後續重建以 diff 視角呈現</div></div>
+        <div class="pip-sidenote"></div>
+      </div>
+    </div>
+    <h2>3.2 LOG_TYPE.status 流轉</h2>
+    <div class="status-row">
+      <span class="status-pill" style="background:var(--gray-light);border-color:var(--gray-mid);color:var(--gray)">draft</span>
+      <span style="color:var(--text-4);align-self:center">→</span>
+      <span class="status-pill" style="background:var(--amber-light);border-color:var(--amber-mid);color:var(--amber)">in_review</span>
+      <span style="color:var(--text-4);align-self:center">→</span>
+      <span class="status-pill" style="background:#FCEBEB;border-color:#F09595;color:#A32D2D">rejected</span>
+      <span style="color:var(--text-4);align-self:center">or</span>
+      <span class="status-pill" style="background:var(--teal-light);border-color:var(--teal-mid);color:var(--teal)">published</span>
+    </div>
+    <div class="note" style="margin-top:16px">Review 介面設計重點：diff 視角（草稿 vs 確認版），低信心欄位橘色警示，不強迫全部看完才能送出，支援標記疑問欄位留待後續處理。</div>
+  </div>
+
+  <!-- 4 -->
+  <div class="section" id="s4">
+    <h1><span class="num">4.</span>Log 分析器</h1>
+    <p>平台中最常被打開的頁面。核心體驗是一個即時的 parse 循環：輸入 log、寫 VRL、看結果，三者緊密連動。</p>
+    <h2>4.1 介面佈局 Mockup</h2>
+    <div class="mockup">
+      <div class="mockup-bar">
+        <span class="mockup-logo">LogScope</span>
+        <div class="mockup-nav">
+          <span>Library</span>
+          <span class="active">Analyzer</span>
+          <span>Copilot</span>
+        </div>
+        <span style="margin-left:auto;font-size:11px;background:#E1F5EE;color:#085041;padding:2px 9px;border-radius:8px">✓ parse ok</span>
+      </div>
+      <div class="match-bar">
+        <span style="font-size:11px;color:#888780">Library 比對</span>
+        <div class="match-pill"><span style="color:#534AB7;font-weight:600;font-size:11px">Palo Alto · PAN-OS</span><span style="font-size:10px;color:#888780;margin-left:4px">Traffic log</span><span class="conf-hi" style="margin-left:6px">94%</span></div>
+        <div class="match-pill"><span style="font-size:11px">Fortinet · FortiGate</span><span class="conf-lo" style="margin-left:6px">61%</span></div>
+        <button class="btn-apply">套用規則</button>
+      </div>
+      <div class="mockup-body" style="grid-template-columns:1fr 1fr 1fr">
+        <div class="pane">
+          <div class="pane-head"><span>VRL</span><span style="display:flex;gap:6px;font-size:14px">✦ ↓ ⎘</span></div>
+          <div class="pane-body">
+<span class="ln">1</span><span class="cm"># PAN-OS Traffic log</span><br>
+<span class="ln">2</span><br>
+<span class="ln">3</span><span class="kw">.</span> = <span class="kw">parse_csv!</span>(<span class="fd">.message</span>)<br>
+<span class="ln">4</span><span class="fd">.log_type</span> = <span class="st">"traffic"</span><br>
+<span class="ln">5</span><span class="fd">.src_ip</span>   = <span class="kw">to_string!</span>(<span class="fd">.[7]</span>)<br>
+<span class="ln">6</span><span class="fd">.dst_ip</span>   = <span class="kw">to_string!</span>(<span class="fd">.[8]</span>)<br>
+<span class="ln">7</span><span class="fd">.action</span>   = <span class="kw">downcase!</span>(<span class="fd">.[29]</span>)<br>
+<span class="ln">8</span><span class="fd">.app</span>      = <span class="kw">to_string!</span>(<span class="fd">.[14]</span>)<br>
+<span class="ln">9</span><span class="fd">.bytes</span>    = <span class="kw">to_int!</span>(<span class="fd">.[30]</span>)<br>
+<span class="ln">10</span><span class="kw">del</span>(<span class="fd">.message</span>)
+          </div>
+          <div class="pane-foot"><span class="ok">✓ 無錯誤</span><span>10 行</span></div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><span>Raw Log</span><span style="font-size:14px">⎘ ✕</span></div>
+          <div class="pane-body" style="font-size:10px;color:#0F6E56;word-break:break-all">1,2024/03/15 12:34:56,0009C101234,TRAFFIC,end,0,2024/03/15 12:34:56,192.168.1.10,8.8.8.8,0.0.0.0,allow-all,,,dns,vsys1,trust,untrust,…</div>
+          <div class="pane-foot"><span>148 bytes · CSV · 1 筆</span></div>
+        </div>
+        <div class="pane">
+          <div class="pane-head"><span>Parse 結果</span><span style="font-size:14px">⎘ 🔖</span></div>
+          <div class="pane-body">
+            <div class="kv-sec">識別欄位</div>
+            <div class="kv"><span class="kv-k">src_ip</span><span class="kv-v-s">192.168.1.10</span></div>
+            <div class="kv"><span class="kv-k">dst_ip</span><span class="kv-v-s">8.8.8.8</span></div>
+            <div class="kv-sec" style="margin-top:8px">事件欄位</div>
+            <div class="kv"><span class="kv-k">action</span><span class="kv-v-s">allow</span></div>
+            <div class="kv"><span class="kv-k">app</span><span class="kv-v-s">dns</span></div>
+            <div class="kv"><span class="kv-k">src_zone</span><span class="kv-v-s">trust</span></div>
+            <div class="kv-sec" style="margin-top:8px">數值欄位</div>
+            <div class="kv"><span class="kv-k">bytes</span><span class="kv-v-n">148</span></div>
+          </div>
+          <div class="pane-foot" style="gap:6px">
+            <button style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:white">存回 Library</button>
+            <button style="font-size:10px;padding:3px 8px;border:1px solid var(--border);border-radius:4px;background:white">存為 sample</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="figure-caption">圖 4-1  Log 分析器：Library 比對列 + 三欄介面（VRL / Raw Log / Parse 結果）</div>
+    <h2>4.2 分析器與 Library 的閉環</h2>
+    <ul>
+      <li>Library → Analyzer：從 Product 詳情頁「在 Analyzer 試打」，帶入 sample log + VRL</li>
+      <li>Analyzer → Library：「存回 Library」將修改後的 VRL 更新回 PARSE_RULE；「存為 sample」新增 SAMPLE_LOG</li>
+    </ul>
+  </div>
+
+  <!-- 5 -->
+  <div class="section" id="s5">
+    <h1><span class="num">5.</span>LLM Copilot</h1>
+    <p>Copilot 的核心定位：不是通用聊天，而是懂 LogScope 脈絡的三技能專家。</p>
+    <h2>5.1 三個核心技能</h2>
+    <div class="three-col">
+      <div class="skill-card skill-card-purple">
+        <div class="skill-title">VRL 生成</div>
+        <div class="skill-row"><b>輸入：raw log 或需求描述</b>生成可執行 VRL；修正 parse 錯誤；解釋現有 VRL 每行</div>
+        <div class="skill-row"><b>一鍵插入 Analyzer</b>不需複製貼上，直接寫進編輯器</div>
+        <div class="trigger-note">觸發方式：⌘K → "寫 VRL" · Analyzer 旁火花圖示</div>
+      </div>
+      <div class="skill-card skill-card-teal">
+        <div class="skill-title">Log 解釋</div>
+        <div class="skill-row"><b>輸入：一行或多行 log</b>白話說明事件；標記異常值；對照 Library schema</div>
+        <div class="skill-row"><b>多筆比較</b>這幾筆有什麼差異</div>
+        <div class="trigger-note">觸發方式：右鍵 → "解釋這行" · 結果欄選取後觸發</div>
+      </div>
+      <div class="skill-card skill-card-amber">
+        <div class="skill-title">Library 比對</div>
+        <div class="skill-row"><b>輸入：raw log</b>識別 vendor/product（附信心% 和理由）；推薦 VRL rule</div>
+        <div class="skill-row"><b>Library 沒有時</b>建議觸發建庫；接受用戶糾正</div>
+        <div class="trigger-note">觸發方式：Analyzer match bar 自動觸發 · 可手動問</div>
+      </div>
+    </div>
+    <h2>5.2 Copilot Panel Mockup</h2>
+    <div class="copilot-shell">
+      <div class="copilot-head">
+        <div class="copilot-title"><span>✦</span> Copilot</div>
+        <span style="font-size:11px;color:var(--text-4)">清除對話</span>
+      </div>
+      <div class="ctx-strip">
+        <div class="ctx-label">目前脈絡</div>
+        <div class="ctx-pills">
+          <span class="ctx-pill active">VRL (197 行)</span>
+          <span class="ctx-pill active">10 筆 logs</span>
+          <span class="ctx-pill">無 Library 比對</span>
+        </div>
+      </div>
+      <div class="msgs">
+        <div><div class="msg-role">Copilot</div><div class="msg-bubble">我看到你的 VRL 有 197 行，正在處理 10 筆 WireGuard syslog。有什麼需要幫忙的？</div></div>
+        <div class="msg-user"><div class="msg-role" style="text-align:right">你</div><div class="msg-bubble">幫我加一個把 timestamp 轉成 UTC 的邏輯</div></div>
+        <div><div class="msg-role">Copilot</div><div class="msg-bubble">
+          在第 181 行之後加入這段：
+          <div class="code-snip"><span class="cm"># 轉換 timestamp 為 UTC</span><br>
+<span class="kw">if</span> <span class="kw">exists</span>(<span class="fd">.timestamp</span>) {<br>
+&nbsp;&nbsp;<span class="fd">.timestamp</span> = <span class="kw">to_timestamp!</span>(<span class="fd">.timestamp</span>, <span class="st">"UTC"</span>)<br>
+}</div>
+          <div class="action-chips">
+            <span class="chip primary">← 插入 Analyzer</span>
+            <span class="chip">解釋</span>
+            <span class="chip">Edge cases</span>
+          </div>
+        </div></div>
+      </div>
+      <div class="quick-row">
+        <span class="quick-btn">解釋目前 VRL</span>
+        <span class="quick-btn">比對 Library</span>
+        <span class="quick-btn">找異常值</span>
+        <span class="quick-btn">最佳化 VRL</span>
+      </div>
+      <div class="input-row">
+        <input class="chat-in" placeholder="問 Copilot…" readonly>
+        <button class="send-btn">↑</button>
+      </div>
+    </div>
+    <div class="figure-caption">圖 5-1  Copilot Panel：脈絡列、對話、快速指令列、插入 Analyzer 按鈕</div>
+    <h2>5.3 全平台脈絡感知</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>頁面</th><th>脈絡內容</th></tr></thead>
+      <tbody>
+        <tr><td>Log 分析器</td><td>目前 VRL 內容、已貼入的 log 筆數、Library 比對結果。可直接操作編輯器</td></tr>
+        <tr><td>Library 列表頁</td><td>目前篩選條件、Library 統計。可回答「哪些 product 還沒建庫」等問題</td></tr>
+        <tr><td>Product 詳情頁</td><td>當前 product 的完整 schema。可回答欄位定義、推薦 sample、指出 VRL 潛在問題</td></tr>
+        <tr><td>Review 頁面</td><td>LLM 草稿內容。可當第二雙眼睛協助 review，指出可疑欄位或 VRL 問題</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note">System prompt 設計：每個頁面 render 時，把當前的 product schema、VRL 內容、logs 動態注入。用戶不需要手動告訴 Copilot「我現在在看 PAN-OS」，它自己知道。</div>
+  </div>
+
+  <!-- 6 -->
+  <div class="section" id="s6">
+    <h1><span class="num">6.</span>頁面清單</h1>
+    <ul class="route-list">
+      <li><span class="route-path">/library</span><span class="route-desc">Library 列表頁：Vendor/Product 瀏覽，含左側篩選 sidebar</span></li>
+      <li><span class="route-path">/library/:vendorSlug/:productSlug</span><span class="route-desc">Product 詳情頁：欄位清單、VRL、sample，Log Type 標籤切換</span></li>
+      <li><span class="route-path">/library/:vendorSlug/:productSlug/review</span><span class="route-desc">Review 頁面：LLM 草稿 diff 視圖，三欄布局</span></li>
+      <li><span class="route-path">/analyzer</span><span class="route-desc">Log 分析器：VRL 編輯 + Log 輸入 + Parse 結果，含 Library 比對列</span></li>
+      <li><span class="route-path">/copilot</span><span class="route-desc">Copilot 獨立頁面（也可作為所有頁面的右側 panel）</span></li>
+    </ul>
+  </div>
+
+  <!-- 7 -->
+  <div class="section" id="s7">
+    <h1><span class="num">7.</span>給 Claude Design 的設計備忘</h1>
+    <div class="infobox infobox-teal">
+      <div class="infobox-label">整體風格方向</div>
+      <p>參考現有 pyvrl-playground 的深色主題編輯器感，搭配乾淨的白色資訊區。Code 區塊用深色背景，非 code 區域用淺色系。整體偏向 developer tool 的專業感，而非消費者產品的活潑風格。</p>
+    </div>
+    <div class="table-wrap" style="margin-top:16px"><table>
+      <thead><tr><th>頁面</th><th>設計重點</th></tr></thead>
+      <tbody>
+        <tr><td>Library 列表頁</td><td>卡片網格要能一眼看出三種狀態。未建庫的卡片建議用虛線邊框，讓用戶一眼看到「缺口」</td></tr>
+        <tr><td>Product 詳情頁</td><td>Log Type 標籤切換是高頻操作，標籤列要易於點擊。右側 Copilot 建議卡片不能太顯眼，是輔助資訊而非主體</td></tr>
+        <tr><td>Log 分析器</td><td>Library 比對列是「動作前提示」，建議放在三欄最上方。Parse 結果欄的欄位分組（識別/事件/數值）要視覺上有層次</td></tr>
+        <tr><td>Copilot panel</td><td>脈絡列（context strip）是關鍵設計，讓用戶知道 AI 在看什麼。快速指令列的四個按鈕要夠顯眼，降低摩擦力</td></tr>
+        <tr><td>Review 頁面</td><td>三欄 diff 視圖是整個建庫機制的體驗核心。左欄唯讀草稿、中欄可編輯、右欄即時試跑。低信心欄位要有明顯橘色警示</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- 8 -->
+  <div class="section" id="s8">
+    <h1><span class="num">8.</span>給 Claude Code 的技術備忘</h1>
+
+    <div class="infobox infobox-amber">
+      <div class="infobox-label">Tech Stack 確認</div>
+      <p><strong>後端：</strong>uv + FastAPI（feature module 架構）+ PostgreSQL + ClickHouse + Redis<br>
+      <strong>前端：</strong>Next.js<br>
+      <strong>VRL 執行：</strong>參考 POC 專案 <code style="font-size:12px;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">/Users/amos/Documents/side-projects/pyvrl-playground</code></p>
+    </div>
+
+    <h2>8.1 後端架構</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>技術</th><th>職責與備忘</th></tr></thead>
+      <tbody>
+        <tr><td>uv</td><td>Python 套件與虛擬環境管理。統一用 <code>uv run</code> 執行腳本，<code>uv sync</code> 同步依賴，避免 pip 混用問題</td></tr>
+        <tr><td>FastAPI<br><small>feature module</small></td><td>以功能模組切分 router：<code>library/</code>、<code>analyzer/</code>、<code>pipeline/</code>、<code>copilot/</code>。每個模組有獨立的 <code>router.py</code>、<code>schemas.py</code>、<code>service.py</code>，避免 God file。用 <code>APIRouter</code> prefix 統一掛載</td></tr>
+        <tr><td>PostgreSQL</td><td>主資料庫，儲存 Library ERD 的六個核心表（VENDOR、PRODUCT、LOG_TYPE、FIELD_SCHEMA、PARSE_RULE、SAMPLE_LOG）。VRL code 和 sample raw_log 用 <code>TEXT</code> 儲存，field schema 的 metadata 可用 <code>JSONB</code> 擴充欄位。建議用 Alembic 做 migration</td></tr>
+        <tr><td>ClickHouse</td><td>儲存 parse 執行的歷史紀錄與統計資料（哪些 VRL rule 被使用、parse 成功率、各 product 的使用頻率）。供 Library 頁面的使用統計和 Copilot 推薦依據。寫入為非同步 fire-and-forget，不擋主流程</td></tr>
+        <tr><td>Redis</td><td>兩個用途：(1) LLM Pipeline job queue — 爬取、生成、發佈各步驟的狀態追蹤，用 Redis Stream 或搭配 ARQ/Celery。(2) API response cache — Library 詳情頁的欄位清單、VRL 不常變動，可 cache 降低 DB 壓力。TTL 設 5–15 分鐘，publish 時主動 invalidate</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2>8.2 VRL 執行環境</h2>
+    <div class="infobox infobox-purple">
+      <div class="infobox-label">POC 參考</div>
+      <p>現有 POC：<code style="font-size:12px;background:rgba(0,0,0,.06);padding:1px 5px;border-radius:3px">pyvrl-playground</code> 已有可動的 VRL parse 實作，LogScope 的 Analyzer 直接以此為基礎。開始前先讀懂 POC 的執行方式，再決定整合策略。</p>
+    </div>
+    <div class="table-wrap" style="margin-top:12px"><table>
+      <thead><tr><th>項目</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td>執行方式確認</td><td>先確認 POC 是用 Python subprocess 呼叫 VRL binary、還是 pyvrl binding，這決定後端 API 的設計。若是 Python binding，直接包成 FastAPI endpoint；若依賴 binary，需要處理 PATH 和 containerization</td></tr>
+        <tr><td>API 設計</td><td><code>POST /analyzer/parse</code>，body 帶 <code>vrl_code</code> 和 <code>logs: list[str]</code>，回傳每筆 log 的 parse 結果與錯誤訊息。單次請求上限建議 500 筆 log</td></tr>
+        <tr><td>前端 debounce</td><td>Next.js 的 Analyzer 頁面：用戶停止輸入 VRL 或 log 後 400ms debounce 才觸發 API call，避免每個按鍵都打 API。parse 結果用 <code>useTransition</code> 標記為非緊急更新，不卡 UI</td></tr>
+        <tr><td>錯誤處理</td><td>VRL compile error 和 runtime error 要分開回傳。Compile error 顯示在 VRL 編輯器行號旁；runtime error（某筆 log parse 失敗）顯示在結果欄對應那筆卡片上</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2>8.3 前端架構</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>項目</th><th>說明</th></tr></thead>
+      <tbody>
+        <tr><td>Next.js App Router</td><td>用 App Router（<code>app/</code> 目錄）。Library 詳情頁和列表頁用 Server Component + <code>generateStaticParams</code> 預渲染常用 product；Analyzer 和 Copilot 因為有即時互動，用 Client Component</td></tr>
+        <tr><td>路由對應</td><td><code>app/library/page.tsx</code> → 列表頁、<code>app/library/[vendor]/[product]/page.tsx</code> → 詳情頁、<code>app/library/[vendor]/[product]/review/page.tsx</code> → Review 頁、<code>app/analyzer/page.tsx</code>、<code>app/copilot/page.tsx</code></td></tr>
+        <tr><td>Copilot panel</td><td>做成 layout-level component，掛在 <code>app/layout.tsx</code> 的右側，讓所有頁面共用同一個 Copilot panel 實例，對話狀態在頁面切換時保留。脈絡（context strip）靠 Zustand 或 React Context 全域管理，各頁面 mount 時 dispatch 自己的 context</td></tr>
+        <tr><td>VRL 編輯器</td><td>建議用 CodeMirror 6（輕量、支援自訂 language extension）。可為 VRL 寫簡單的 syntax highlight extension，參考 POC 的關鍵字列表</td></tr>
+        <tr><td>API 呼叫</td><td>用 <code>fetch</code> + SWR 或 TanStack Query 管理 server state。Library 資料 cache 在 client，Analyzer parse 結果不 cache（每次都是新的）</td></tr>
+      </tbody>
+    </table></div>
+
+    <h2>8.4 FastAPI Feature Module 結構建議</h2>
+    <div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;font-family:'SF Mono','Fira Code',monospace;font-size:12px;line-height:1.9;margin:12px 0;overflow-x:auto">
+<span style="color:var(--text-3)">logscope-api/</span><br>
+<span style="color:var(--text-3)">├── </span><span style="color:var(--purple)">pyproject.toml</span><span style="color:var(--text-3)">          # uv 管理</span><br>
+<span style="color:var(--text-3)">├── </span><span style="color:var(--purple)">main.py</span><span style="color:var(--text-3)">                 # FastAPI app + router 掛載</span><br>
+<span style="color:var(--text-3)">├── </span><span style="color:var(--purple)">core/</span><br>
+<span style="color:var(--text-3)">│   ├── </span><span style="color:var(--teal)">config.py</span><span style="color:var(--text-3)">           # 環境變數 (pydantic-settings)</span><br>
+<span style="color:var(--text-3)">│   ├── </span><span style="color:var(--teal)">database.py</span><span style="color:var(--text-3)">         # PG + ClickHouse + Redis 連線</span><br>
+<span style="color:var(--text-3)">│   └── </span><span style="color:var(--teal)">deps.py</span><span style="color:var(--text-3)">             # FastAPI Depends</span><br>
+<span style="color:var(--text-3)">├── </span><span style="color:var(--purple)">features/</span><br>
+<span style="color:var(--text-3)">│   ├── </span><span style="color:var(--amber)">library/</span><br>
+<span style="color:var(--text-3)">│   │   ├── </span><span style="color:var(--teal)">router.py</span><span style="color:var(--text-3)">       # GET /library, /library/{vendor}/{product}</span><br>
+<span style="color:var(--text-3)">│   │   ├── </span><span style="color:var(--teal)">schemas.py</span><span style="color:var(--text-3)">      # Pydantic models</span><br>
+<span style="color:var(--text-3)">│   │   └── </span><span style="color:var(--teal)">service.py</span><span style="color:var(--text-3)">      # 業務邏輯、DB 查詢</span><br>
+<span style="color:var(--text-3)">│   ├── </span><span style="color:var(--amber)">analyzer/</span><br>
+<span style="color:var(--text-3)">│   │   ├── </span><span style="color:var(--teal)">router.py</span><span style="color:var(--text-3)">       # POST /analyzer/parse, /analyzer/match</span><br>
+<span style="color:var(--text-3)">│   │   ├── </span><span style="color:var(--teal)">schemas.py</span><br>
+<span style="color:var(--text-3)">│   │   └── </span><span style="color:var(--teal)">vrl_runner.py</span><span style="color:var(--text-3)">   # POC 整合點，封裝 VRL 執行邏輯</span><br>
+<span style="color:var(--text-3)">│   ├── </span><span style="color:var(--amber)">pipeline/</span><br>
+<span style="color:var(--text-3)">│   │   ├── </span><span style="color:var(--teal)">router.py</span><span style="color:var(--text-3)">       # POST /pipeline/trigger, GET /pipeline/{job_id}</span><br>
+<span style="color:var(--text-3)">│   │   ├── </span><span style="color:var(--teal)">worker.py</span><span style="color:var(--text-3)">       # 爬取 + LLM 生成的 async task</span><br>
+<span style="color:var(--text-3)">│   │   └── </span><span style="color:var(--teal)">crawler.py</span><span style="color:var(--text-3)">      # 文件爬取邏輯</span><br>
+<span style="color:var(--text-3)">│   └── </span><span style="color:var(--amber)">copilot/</span><br>
+<span style="color:var(--text-3)">│       ├── </span><span style="color:var(--teal)">router.py</span><span style="color:var(--text-3)">       # POST /copilot/chat (streaming)</span><br>
+<span style="color:var(--text-3)">│       └── </span><span style="color:var(--teal)">prompt_builder.py</span><span style="color:var(--text-3)">  # 各頁面 context 注入邏輯</span><br>
+<span style="color:var(--text-3)">└── </span><span style="color:var(--purple)">migrations/</span><span style="color:var(--text-3)">             # Alembic migrations</span>
+    </div>
+
+    <h2>8.5 資料庫職責分工</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>資料庫</th><th>儲存什麼</th><th>不儲存什麼</th></tr></thead>
+      <tbody>
+        <tr><td>PostgreSQL</td><td>Library 六個核心表、user 資料、Pipeline job 狀態、Review 記錄</td><td>log 原始資料、時序資料、大量寫入的統計</td></tr>
+        <tr><td>ClickHouse</td><td>Analyzer 的 parse 執行歷史（vrl_id、log_count、success_rate、latency_ms、ts）、Library 使用頻率統計</td><td>需要 JOIN 的結構化業務資料、需要即時更新的資料</td></tr>
+        <tr><td>Redis</td><td>Pipeline job queue（Stream 或 List）、Library API response cache、Copilot 對話 session（TTL 1hr）</td><td>需要持久化的業務資料</td></tr>
+      </tbody>
+    </table></div>
+    <div class="note">ClickHouse 的寫入建議 batch：Analyzer 每次 parse 完成後，把執行統計推入 Redis queue，由背景 worker 每 30 秒批次寫入 ClickHouse，避免高頻小批次寫入。</div>
+
+    <h2>8.6 核心技術挑戰</h2>
+    <div class="table-wrap"><table>
+      <thead><tr><th>挑戰</th><th>建議策略</th></tr></thead>
+      <tbody>
+        <tr><td>Library 比對演算法</td><td>初期：把 raw log 前 200 字元送給 LLM，問它最可能是哪個 vendor/product（回傳 top 3 + 信心分）。中期：從 LOG_TYPE 的 FIELD_SCHEMA 和 sample 建立 fingerprint index，用特徵匹配提升速度和降低 LLM cost</td></tr>
+        <tr><td>LLM Pipeline 穩健性</td><td>不同 vendor 文件格式差異大，爬取失敗或解析結果為空時要能 graceful fallback，並在 Review 頁面標示哪些欄位是「LLM 推測」而非「文件確認」。每個爬取步驟要有 retry + timeout</td></tr>
+        <tr><td>Copilot streaming</td><td>用 FastAPI 的 <code>StreamingResponse</code> + Server-Sent Events（SSE），Next.js 前端用 <code>EventSource</code> 接收。這樣 Copilot 的回覆可以逐字顯示，不需等全部生成完才顯示</td></tr>
+        <tr><td>VRL POC 整合</td><td>把 POC 的核心邏輯封裝進 <code>features/analyzer/vrl_runner.py</code>，對外暴露 <code>parse(vrl_code: str, logs: list[str]) -&gt; ParseResult</code> 介面。其他模組只 import 這個介面，後續換實作不影響上層</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="footer">
+    <span>LogScope Design Document v1.2</span>
+    <span>Generated May 2026 · For internal use</span>
+  </div>
+</div>
+</body>
+</html>
