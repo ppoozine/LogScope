@@ -6,7 +6,7 @@
         api web web-build \
         test test-int test-fe test-fe-e2e \
         lint lint-fe fmt typecheck typecheck-fe \
-        up down migrate revision \
+        up down dev-stats migrate revision \
         gen-api build-engines
 
 LOG_DIR := .runtime/logs
@@ -190,6 +190,10 @@ status:
 # ──────────────────────────────────────────────
 up:
 	docker compose up -d
+
+dev-stats:
+	docker compose --profile stats up -d clickhouse
+	@echo "ClickHouse on :8123 — set CLICKHOUSE_URL in .env to enable Stats"
 
 down:
 	docker compose down
