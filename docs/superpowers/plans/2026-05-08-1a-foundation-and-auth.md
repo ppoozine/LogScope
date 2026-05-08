@@ -2036,9 +2036,9 @@ import os
 import uuid
 from collections.abc import Sequence
 
+import bcrypt
 import sqlalchemy as sa
 from alembic import op
-from passlib.context import CryptContext
 
 revision: str = "0002_seed_admin_user"
 down_revision: str | None = "0001_init_users"
@@ -2054,7 +2054,7 @@ def upgrade() -> None:
             "LOGSCOPE_ADMIN_EMAIL and LOGSCOPE_ADMIN_PASSWORD must be set to run 0002 migration"
         )
 
-    ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    password_hash = bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=12)).decode()
     op.execute(
         sa.text(
             "INSERT INTO users (id, email, password_hash, display_name, is_active) "
@@ -2062,7 +2062,7 @@ def upgrade() -> None:
         ).bindparams(
             id=uuid.uuid4(),
             email=email,
-            hash=ctx.hash(password),
+            hash=password_hash,
             name="Admin",
         )
     )
