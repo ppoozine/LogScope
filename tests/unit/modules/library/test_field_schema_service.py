@@ -27,9 +27,9 @@ def _make_field(name: str = "src_ip") -> FieldSchema:
 def _make_service(*, log_type_get: LogType | None = None):
     field_repo = MagicMock()
     field_repo.list_by_log_type = AsyncMock(return_value=[])
-    field_repo.replace_for_log_type = AsyncMock(side_effect=lambda lt_id, items: [
-        _make_field(item.field_name) for item in items
-    ])
+    field_repo.replace_for_log_type = AsyncMock(
+        side_effect=lambda lt_id, items: [_make_field(item.field_name) for item in items]
+    )
 
     log_type_repo = MagicMock()
     log_type_repo.get_by_id = AsyncMock(return_value=log_type_get)

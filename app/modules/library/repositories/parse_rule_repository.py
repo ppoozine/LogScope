@@ -15,11 +15,7 @@ class ParseRuleRepository:
         return result.scalar_one_or_none()
 
     async def list_by_log_type(self, log_type_id: uuid.UUID) -> list[ParseRule]:
-        stmt = (
-            select(ParseRule)
-            .where(ParseRule.log_type_id == log_type_id)
-            .order_by(ParseRule.version.desc())
-        )
+        stmt = select(ParseRule).where(ParseRule.log_type_id == log_type_id).order_by(ParseRule.version.desc())
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

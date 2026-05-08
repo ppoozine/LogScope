@@ -3,6 +3,7 @@
 Only fixtures that are useful across multiple test files belong here.
 Single-test helpers should stay in the test file.
 """
+
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from unittest.mock import AsyncMock, MagicMock

@@ -14,20 +14,14 @@ class LogTypeRepository:
         result = await self._session.execute(select(LogType).where(LogType.id == log_type_id))
         return result.scalar_one_or_none()
 
-    async def get_by_product_and_slug(
-        self, product_id: uuid.UUID, slug: str
-    ) -> LogType | None:
+    async def get_by_product_and_slug(self, product_id: uuid.UUID, slug: str) -> LogType | None:
         result = await self._session.execute(
             select(LogType).where(LogType.product_id == product_id, LogType.slug == slug)
         )
         return result.scalar_one_or_none()
 
     async def list_by_product(self, product_id: uuid.UUID) -> list[LogType]:
-        stmt = (
-            select(LogType)
-            .where(LogType.product_id == product_id)
-            .order_by(LogType.name)
-        )
+        stmt = select(LogType).where(LogType.product_id == product_id).order_by(LogType.name)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

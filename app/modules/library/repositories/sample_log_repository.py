@@ -11,17 +11,11 @@ class SampleLogRepository:
         self._session = session
 
     async def get_by_id(self, sample_id: uuid.UUID) -> SampleLog | None:
-        result = await self._session.execute(
-            select(SampleLog).where(SampleLog.id == sample_id)
-        )
+        result = await self._session.execute(select(SampleLog).where(SampleLog.id == sample_id))
         return result.scalar_one_or_none()
 
     async def list_by_log_type(self, log_type_id: uuid.UUID) -> list[SampleLog]:
-        stmt = (
-            select(SampleLog)
-            .where(SampleLog.log_type_id == log_type_id)
-            .order_by(SampleLog.created_at.desc())
-        )
+        stmt = select(SampleLog).where(SampleLog.log_type_id == log_type_id).order_by(SampleLog.created_at.desc())
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

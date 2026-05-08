@@ -61,9 +61,7 @@ class TestVendorList:
         # Arrange: fake auth raises UnauthorizedError (no session cookie),
         # also override get_vendor_service to avoid DB-not-initialized error
         fake_auth = AsyncMock()
-        fake_auth.get_current_user_from_session = AsyncMock(
-            side_effect=UnauthorizedError("missing session")
-        )
+        fake_auth.get_current_user_from_session = AsyncMock(side_effect=UnauthorizedError("missing session"))
         fake_service = AsyncMock()
         app.dependency_overrides[get_auth_service] = lambda: fake_auth
         app.dependency_overrides[get_vendor_service] = lambda: fake_service

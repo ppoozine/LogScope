@@ -1,13 +1,12 @@
 import uuid
 from unittest.mock import AsyncMock, MagicMock
 
+from app.modules.library.models.log_type import LogType
+from app.modules.library.repositories.log_type_repository import LogTypeRepository
 from tests.conftest import (
     make_mock_session_for_list,
     make_mock_session_for_single,
 )
-
-from app.modules.library.models.log_type import LogType
-from app.modules.library.repositories.log_type_repository import LogTypeRepository
 
 
 def _make_log_type(slug: str = "traffic", product_id: uuid.UUID | None = None) -> LogType:

@@ -25,9 +25,7 @@ class FieldSchemaRepository:
         items: list[FieldSchema],
     ) -> list[FieldSchema]:
         """Atomically delete existing fields for log_type then insert new ones."""
-        await self._session.execute(
-            delete(FieldSchema).where(FieldSchema.log_type_id == log_type_id)
-        )
+        await self._session.execute(delete(FieldSchema).where(FieldSchema.log_type_id == log_type_id))
         for item in items:
             self._session.add(item)
         await self._session.flush()
