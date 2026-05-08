@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import { useFixtures } from "@/lib/api/queries/analyzer";
 import {
   type AnalyzerSnippet,
   deleteSnippet,
@@ -26,7 +27,9 @@ type Props = {
 export function SnippetsBar({ current, onLoad }: Props) {
   const [snippets, setSnippets] = useState<AnalyzerSnippet[]>([]);
   const [selected, setSelected] = useState<string>("");
+  const [selectedFixture, setSelectedFixture] = useState<string>("");
   const fileRef = useRef<HTMLInputElement | null>(null);
+  const fixturesQuery = useFixtures();
 
   useEffect(() => {
     setSnippets(loadSnippets());
@@ -62,6 +65,21 @@ export function SnippetsBar({ current, onLoad }: Props) {
     });
     refresh();
     setSelected(trimmed);
+  };
+
+  const handleFixtureChange = (id: string) => {
+    setSelectedFixture(id);
+    if (!id) return;
+    const fix = fixturesQuery.data?.find((f) => f.id === id);
+    if (fix) {
+      onLoad({
+        vrl: fix.vrl,
+        logs: fix.logs,
+        engineVersion: fix.engine,
+      });
+      // Clear selection after applying so re-picking same fixture works
+      setSelectedFixture("");
+    }
   };
 
   const handleDelete = () => {
@@ -150,6 +168,27 @@ export function SnippetsBar({ current, onLoad }: Props) {
       >
         Delete
       </Button>
+      <span className="mx-2 h-4 w-px bg-border" />
+      <Label
+        htmlFor="fixtures-select"
+        className="text-[11px] uppercase tracking-wider text-muted-foreground"
+      >
+        Fixtures
+      </Label>
+      <select
+        id="fixtures-select"
+        value={selectedFixture}
+        onChange={(e) => handleFixtureChange(e.target.value)}
+        disabled={fixturesQuery.isLoading || !fixturesQuery.data?.length}
+        className="h-7 min-w-[160px] max-w-[220px] rounded-md border bg-background px-2 text-xs"
+      >
+        <option value="">— load sample —</option>
+        {fixturesQuery.data?.map((f) => (
+          <option key={f.id} value={f.id} title={f.description}>
+            {f.name}
+          </option>
+        ))}
+      </select>
       <span className="ml-auto flex gap-1">
         <input
           ref={fileRef}

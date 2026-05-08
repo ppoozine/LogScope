@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { apiFetch } from "@/lib/api/client";
 import type { components } from "@/lib/api/types";
@@ -9,6 +9,8 @@ type MatchRequest = components["schemas"]["MatchRequest"];
 type MatchResponse = components["schemas"]["MatchResponse"];
 type CheckRequest = components["schemas"]["CheckRequest"];
 type CheckResponse = components["schemas"]["CheckResponse"];
+type FixtureItem = components["schemas"]["FixtureItem"];
+type FixtureListResponse = components["schemas"]["FixtureListResponse"];
 
 export function useParse() {
   return useMutation<ParseResponse, Error, ParseRequest>({
@@ -43,5 +45,16 @@ export function useCheck() {
       });
       return r.data;
     },
+  });
+}
+
+export function useFixtures() {
+  return useQuery<FixtureItem[]>({
+    queryKey: ["analyzer", "fixtures"],
+    queryFn: async () => {
+      const r = await apiFetch<{ data: FixtureListResponse }>("/api/v1/analyzer/fixtures");
+      return r.data.fixtures;
+    },
+    staleTime: 1000 * 60 * 10, // 10 min — fixtures change rarely
   });
 }
