@@ -39,7 +39,12 @@ class DatabaseManager:
         if self._sessionmaker is None:
             raise RuntimeError("DatabaseManager not connected")
         async with self._sessionmaker() as session:
-            yield session
+            try:
+                yield session
+                await session.commit()
+            except Exception:
+                await session.rollback()
+                raise
 
 
 _db: DatabaseManager | None = None
