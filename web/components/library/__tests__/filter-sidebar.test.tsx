@@ -5,64 +5,35 @@ import { describe, expect, it, vi } from "vitest";
 import { FilterSidebar } from "@/components/library/filter-sidebar";
 
 describe("FilterSidebar", () => {
-  it("calls onChange with selected category", async () => {
+  it("calls onChange with selected status", async () => {
     // Arrange
     const onChange = vi.fn();
     const user = userEvent.setup();
-    render(<FilterSidebar filters={{}} onChange={onChange} groups={[]} />);
+    render(<FilterSidebar filters={{}} onChange={onChange} />);
 
     // Act
-    await user.click(screen.getByRole("button", { name: /Network/ }));
+    await user.click(screen.getByRole("button", { name: /Published/ }));
 
     // Assert
-    expect(onChange).toHaveBeenCalledWith({ category: "network" });
+    expect(onChange).toHaveBeenCalledWith({ status: "published" });
   });
 
   it("highlights active filter", () => {
     // Arrange / Act
-    render(<FilterSidebar filters={{ status: "published" }} onChange={vi.fn()} groups={[]} />);
+    render(<FilterSidebar filters={{ status: "published" }} onChange={vi.fn()} />);
 
     // Assert
     const publishedBtn = screen.getByRole("button", { name: /Published/ });
     expect(publishedBtn).toHaveClass("bg-muted");
   });
 
-  it("shows category counts derived from groups", () => {
+  it("renders status filter options", () => {
     // Arrange / Act
-    render(
-      <FilterSidebar
-        filters={{}}
-        onChange={vi.fn()}
-        groups={[
-          {
-            vendor: { id: "v1", name: "Acme", slug: "acme", logo_url: null },
-            products: [
-              {
-                id: "p1",
-                name: "P1",
-                slug: "p1",
-                category: "network",
-                status: "active",
-                log_type_counts: { total: 0, published: 0, draft: 0 },
-                is_empty: true,
-              },
-              {
-                id: "p2",
-                name: "P2",
-                slug: "p2",
-                category: "network",
-                status: "active",
-                log_type_counts: { total: 0, published: 0, draft: 0 },
-                is_empty: true,
-              },
-            ],
-          },
-        ]}
-      />,
-    );
+    render(<FilterSidebar filters={{}} onChange={vi.fn()} />);
 
-    // Assert: Network 應顯示 count 2
-    const networkBtn = screen.getByRole("button", { name: /Network/ });
-    expect(networkBtn).toHaveTextContent("2");
+    // Assert
+    expect(screen.getByRole("button", { name: /全部/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Published/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Draft/ })).toBeInTheDocument();
   });
 });

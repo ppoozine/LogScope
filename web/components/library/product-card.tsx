@@ -1,17 +1,9 @@
 import Link from "next/link";
 
-import { Badge } from "@/components/ui/badge";
 import type { components } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
 type OverviewProduct = components["schemas"]["OverviewProduct"];
-
-const CATEGORY_LABEL: Record<string, string> = {
-  network: "Network",
-  endpoint: "Endpoint",
-  auth: "Auth",
-  other: "Other",
-};
 
 type Props = { vendorSlug: string; product: OverviewProduct };
 
@@ -31,11 +23,6 @@ export function ProductCard({ vendorSlug, product }: Props) {
         <h3 className="text-sm font-semibold">{product.name}</h3>
         <StatusBadge status={status} />
       </div>
-      {product.category && (
-        <Badge variant="outline" className="w-fit">
-          {CATEGORY_LABEL[product.category] ?? product.category}
-        </Badge>
-      )}
       <p className="text-xs text-muted-foreground">
         {isEmpty ? "—" : `${product.log_type_counts.total} log types`}
       </p>

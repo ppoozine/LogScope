@@ -12,7 +12,6 @@ type VendorRead = components["schemas"]["VendorRead"];
 type ProductRead = components["schemas"]["ProductRead"];
 
 export type OverviewFilters = {
-  category?: string;
   status?: string;
   q?: string;
 };

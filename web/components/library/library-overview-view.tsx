@@ -37,7 +37,7 @@ export function LibraryOverviewView({ initialFilters }: Props) {
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_1fr]">
       <div className="hidden lg:block">
-        <FilterSidebar filters={filters} onChange={setFilters} groups={groups ?? []} />
+        <FilterSidebar filters={filters} onChange={setFilters} />
       </div>
 
       <div className="flex flex-col gap-4">

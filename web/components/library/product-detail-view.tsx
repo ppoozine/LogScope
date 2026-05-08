@@ -36,7 +36,7 @@ export function ProductDetailView({ vendorSlug, detail }: Props) {
             {detail.status}
           </Badge>
         </div>
-        <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground sm:grid-cols-3">
           <Stat label="Log types" value={detail.log_types.length} />
           <Stat
             label="Fields"
@@ -46,7 +46,6 @@ export function ProductDetailView({ vendorSlug, detail }: Props) {
             label="Samples"
             value={detail.log_types.reduce((s, lt) => s + lt.samples.length, 0)}
           />
-          <Stat label="Category" value={detail.category ?? "—"} />
         </div>
       </header>
 

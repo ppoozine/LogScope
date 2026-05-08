@@ -642,8 +642,6 @@ export interface components {
             name: string;
             /** Slug */
             slug: string;
-            /** Category */
-            category: ("network" | "endpoint" | "auth" | "other") | null;
             /**
              * Status
              * @enum {string}
@@ -745,8 +743,6 @@ export interface components {
             description?: string | null;
             /** Deploy Type */
             deploy_type?: ("cloud" | "on_prem" | "hybrid") | null;
-            /** Category */
-            category?: ("network" | "endpoint" | "auth" | "other") | null;
             /** Doc Url */
             doc_url?: string | null;
             /**
@@ -781,8 +777,6 @@ export interface components {
             description: string | null;
             /** Deploy Type */
             deploy_type: ("cloud" | "on_prem" | "hybrid") | null;
-            /** Category */
-            category: ("network" | "endpoint" | "auth" | "other") | null;
             /** Doc Url */
             doc_url: string | null;
             /**
@@ -825,8 +819,6 @@ export interface components {
             description: string | null;
             /** Deploy Type */
             deploy_type: ("cloud" | "on_prem" | "hybrid") | null;
-            /** Category */
-            category: ("network" | "endpoint" | "auth" | "other") | null;
             /** Doc Url */
             doc_url: string | null;
             /**
@@ -855,8 +847,6 @@ export interface components {
             description?: string | null;
             /** Deploy Type */
             deploy_type?: ("cloud" | "on_prem" | "hybrid") | null;
-            /** Category */
-            category?: ("network" | "endpoint" | "auth" | "other") | null;
             /** Doc Url */
             doc_url?: string | null;
             /** Status */
@@ -1100,7 +1090,6 @@ export interface operations {
     overview_api_v1_library_overview_get: {
         parameters: {
             query?: {
-                category?: ("network" | "endpoint" | "auth" | "other") | null;
                 status?: string | null;
                 q?: string | null;
             };

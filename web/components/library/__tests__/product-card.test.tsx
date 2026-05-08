@@ -11,7 +11,6 @@ function makeProduct(overrides: Partial<OverviewProduct> = {}): OverviewProduct 
     id: "p1",
     name: "PAN-OS",
     slug: "pan-os",
-    category: "network",
     status: "active",
     log_type_counts: { total: 3, published: 3, draft: 0 },
     is_empty: false,
@@ -20,13 +19,12 @@ function makeProduct(overrides: Partial<OverviewProduct> = {}): OverviewProduct 
 }
 
 describe("ProductCard", () => {
-  it("renders name and category badge", () => {
+  it("renders name and log type count", () => {
     // Arrange / Act
     render(<ProductCard vendorSlug="palo-alto" product={makeProduct()} />);
 
     // Assert
     expect(screen.getByText("PAN-OS")).toBeInTheDocument();
-    expect(screen.getByText("Network")).toBeInTheDocument();
     expect(screen.getByText("3 log types")).toBeInTheDocument();
   });
 

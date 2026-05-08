@@ -83,7 +83,6 @@ describe("useProductDetail", () => {
             version: null,
             description: null,
             deploy_type: null,
-            category: "network",
             doc_url: null,
             status: "active",
             created_at: "2026-05-08T00:00:00Z",

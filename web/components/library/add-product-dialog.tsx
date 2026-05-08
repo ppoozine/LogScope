@@ -26,13 +26,11 @@ export function AddProductDialog({ vendorSlug, onOpenChange }: Props) {
 
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [category, setCategory] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
 
   const reset = () => {
     setName("");
     setSlug("");
-    setCategory("");
     setError(null);
   };
 
@@ -44,7 +42,6 @@ export function AddProductDialog({ vendorSlug, onOpenChange }: Props) {
       await create.mutateAsync({
         name,
         slug: slug || undefined,
-        category: (category || undefined) as "network" | "endpoint" | "auth" | "other" | undefined,
         status: "active",
       });
       onOpenChange(false);
@@ -93,22 +90,6 @@ export function AddProductDialog({ vendorSlug, onOpenChange }: Props) {
               onChange={(e) => setSlug(e.target.value)}
               placeholder="pan-os（自動產生）"
             />
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="p-category">分類</Label>
-            <select
-              id="p-category"
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="h-10 rounded-md border bg-background px-3 text-sm"
-            >
-              <option value="">未指定</option>
-              <option value="network">Network</option>
-              <option value="endpoint">Endpoint</option>
-              <option value="auth">Auth</option>
-              <option value="other">Other</option>
-            </select>
           </div>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
