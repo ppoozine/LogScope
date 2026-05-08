@@ -879,6 +879,10 @@ export interface components {
              * @enum {string}
              */
             engine_version: "0.25" | "0.32";
+            /** Log Type Id */
+            log_type_id?: string | null;
+            /** Parse Rule Id */
+            parse_rule_id?: string | null;
         };
         /** ParseResponse */
         ParseResponse: {

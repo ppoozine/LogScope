@@ -13,6 +13,8 @@ class ParseRequest(BaseModel):
     vrl_code: str = Field(min_length=1)
     logs: list[str] = Field(max_length=500)
     engine_version: EngineVersion = "0.32"
+    log_type_id: uuid.UUID | None = None
+    parse_rule_id: uuid.UUID | None = None
 
 
 class ParseResultItem(BaseModel):
