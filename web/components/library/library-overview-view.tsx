@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 
+import { AddProductDialog } from "@/components/library/add-product-dialog";
+import { AddVendorDialog } from "@/components/library/add-vendor-dialog";
 import { EmptyState } from "@/components/library/empty-state";
 import { FilterSidebar } from "@/components/library/filter-sidebar";
 import { ProductCard } from "@/components/library/product-card";
@@ -15,6 +17,8 @@ type Props = { initialFilters: OverviewFilters };
 
 export function LibraryOverviewView({ initialFilters }: Props) {
   const [filters, setFilters] = useState<OverviewFilters>(initialFilters);
+  const [vendorOpen, setVendorOpen] = useState(false);
+  const [productOpen, setProductOpen] = useState<string | null>(null); // vendor slug
   const {
     data: groups,
     isLoading,
@@ -44,9 +48,7 @@ export function LibraryOverviewView({ initialFilters }: Props) {
             onChange={(e) => setFilters((f) => ({ ...f, q: e.target.value || undefined }))}
             className="flex-1"
           />
-          <Button disabled title="Task 16 將開放新增表單">
-            新增 Vendor
-          </Button>
+          <Button onClick={() => setVendorOpen(true)}>新增 Vendor</Button>
           <Button variant="outline" disabled title="Coming in spec E">
             AI 建庫
           </Button>
@@ -61,16 +63,26 @@ export function LibraryOverviewView({ initialFilters }: Props) {
 
         {error && <p className="text-sm text-red-600">載入失敗：{error.message}</p>}
 
-        {showEmpty && <EmptyState onAddVendor={() => {}} />}
+        {showEmpty && <EmptyState onAddVendor={() => setVendorOpen(true)} />}
 
         {groups?.map((group) => (
-          <VendorGroup key={group.vendor.id} group={group}>
+          <VendorGroup
+            key={group.vendor.id}
+            group={group}
+            onAddProduct={() => setProductOpen(group.vendor.slug)}
+          >
             {group.products.map((product) => (
               <ProductCard key={product.id} vendorSlug={group.vendor.slug} product={product} />
             ))}
           </VendorGroup>
         ))}
       </div>
+
+      <AddVendorDialog open={vendorOpen} onOpenChange={setVendorOpen} />
+      <AddProductDialog
+        vendorSlug={productOpen}
+        onOpenChange={(open) => !open && setProductOpen(null)}
+      />
     </div>
   );
 }
