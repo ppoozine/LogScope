@@ -1,9 +1,14 @@
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+from sqlalchemy.exc import IntegrityError
+
 from app.common.exceptions import (
     AppException,
     ConflictError,
     NotFoundError,
     UnauthorizedError,
 )
+from app.core.exception_handlers import register_exception_handlers
 
 
 class TestAppException:
@@ -36,3 +41,28 @@ class TestAppException:
         # Assert
         assert exc.status_code == 401
         assert isinstance(exc, AppException)
+
+
+class TestIntegrityErrorHandler:
+    """Tests for IntegrityError → 409 mapping."""
+
+    def test_integrity_error_returns_409(self):
+        """Should map sqlalchemy IntegrityError to 409 with 'conflict' code."""
+        # Arrange
+        app = FastAPI()
+        register_exception_handlers(app)
+
+        @app.get("/boom")
+        async def boom():
+            raise IntegrityError("INSERT FAILED", params=None, orig=Exception("FK violation"))
+
+        client = TestClient(app)
+
+        # Act
+        r = client.get("/boom")
+
+        # Assert
+        assert r.status_code == 409
+        body = r.json()
+        assert body["error"]["code"] == "conflict"
+        assert "constraint" in body["error"]["detail"].lower() or "integrity" in body["error"]["detail"].lower()
