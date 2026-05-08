@@ -23,7 +23,6 @@ class LibraryOverviewService:
     async def overview(
         self,
         *,
-        category: str | None = None,
         log_type_status: str | None = None,
         q: str | None = None,
     ) -> list[OverviewVendorGroup]:
@@ -47,9 +46,6 @@ class LibraryOverviewService:
             overview_products: list[OverviewProduct] = []
 
             for product in products:
-                if category is not None and product.category != category:
-                    continue
-
                 log_types = await self._log_types.list_by_product(product.id)
                 published = sum(1 for lt in log_types if lt.status == "published")
                 draft = sum(1 for lt in log_types if lt.status == "draft")
@@ -65,7 +61,6 @@ class LibraryOverviewService:
                         id=product.id,
                         name=product.name,
                         slug=product.slug,
-                        category=product.category,  # type: ignore[arg-type]
                         status=product.status,  # type: ignore[arg-type]
                         log_type_counts=LogTypeCounts(
                             total=total,

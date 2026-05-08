@@ -47,7 +47,6 @@ class TestLibraryOverviewRoute:
                         id=uuid.uuid4(),
                         name="P",
                         slug="p",
-                        category="network",
                         status="active",
                         log_type_counts=LogTypeCounts(total=0, published=0, draft=0),
                         is_empty=True,

@@ -30,7 +30,6 @@ def _make_product() -> Product:
     p.version = None
     p.description = None
     p.deploy_type = None
-    p.category = "network"
     p.doc_url = None
     p.status = "active"
     p.created_at = datetime.now(UTC)
@@ -50,7 +49,6 @@ def _make_product_detail():
         version=None,
         description=None,
         deploy_type=None,
-        category="network",
         doc_url=None,
         status="active",
         created_at=datetime.now(UTC),

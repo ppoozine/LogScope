@@ -41,7 +41,7 @@ class TestLibraryFlow:
         # Act 2: create product under vendor
         r = await authenticated_client.post(
             f"/api/v1/library/vendors/{vendor_slug}/products",
-            json={"name": "Test Product", "slug": "test-product", "category": "network"},
+            json={"name": "Test Product", "slug": "test-product"},
         )
         # Assert 2
         assert r.status_code == 201
@@ -161,7 +161,7 @@ class TestLibraryFlow:
 
         r = await authenticated_client.post(
             f"/api/v1/library/vendors/{vendor_slug}/products",
-            json={"name": "P", "slug": "p", "category": "network"},
+            json={"name": "P", "slug": "p"},
         )
         assert r.status_code == 201
         product = r.json()["data"]

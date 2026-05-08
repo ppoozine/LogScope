@@ -175,7 +175,6 @@ class TestProductServiceGetDetail:
         product.version = None
         product.description = None
         product.deploy_type = None
-        product.category = "network"
         product.doc_url = None
         product.status = "active"
 

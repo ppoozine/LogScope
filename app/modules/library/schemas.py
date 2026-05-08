@@ -10,7 +10,6 @@ from pydantic import BaseModel, ConfigDict, Field
 
 VendorStatus = Literal["active", "inactive"]
 ProductStatus = Literal["active", "inactive"]
-ProductCategory = Literal["network", "endpoint", "auth", "other"]
 DeployType = Literal["cloud", "on_prem", "hybrid"]
 LogTypeStatus = Literal["draft", "published"]
 LogTypeSource = Literal["manual"]
@@ -66,7 +65,6 @@ class ProductCreate(BaseModel):
     version: str | None = Field(default=None, max_length=50)
     description: str | None = None
     deploy_type: DeployType | None = None
-    category: ProductCategory | None = None
     doc_url: str | None = None
     status: ProductStatus = "active"
 
@@ -76,7 +74,6 @@ class ProductUpdate(BaseModel):
     version: str | None = None
     description: str | None = None
     deploy_type: DeployType | None = None
-    category: ProductCategory | None = None
     doc_url: str | None = None
     status: ProductStatus | None = None
 
@@ -91,7 +88,6 @@ class ProductRead(BaseModel):
     version: str | None
     description: str | None
     deploy_type: DeployType | None
-    category: ProductCategory | None
     doc_url: str | None
     status: ProductStatus
     created_at: datetime
@@ -256,7 +252,6 @@ class OverviewProduct(BaseModel):
     id: uuid.UUID
     name: str
     slug: str
-    category: ProductCategory | None
     status: ProductStatus
     log_type_counts: LogTypeCounts
     is_empty: bool

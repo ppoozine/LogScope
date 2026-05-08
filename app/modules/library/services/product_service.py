@@ -110,7 +110,6 @@ class ProductService:
             version=product.version,
             description=product.description,
             deploy_type=product.deploy_type,  # type: ignore[arg-type]
-            category=product.category,  # type: ignore[arg-type]
             doc_url=product.doc_url,
             status=product.status,  # type: ignore[arg-type]
             created_at=product.created_at,
@@ -141,7 +140,6 @@ class ProductService:
         product.version = data.version
         product.description = data.description
         product.deploy_type = data.deploy_type
-        product.category = data.category
         product.doc_url = data.doc_url
         product.status = data.status
         product.created_by = current_user_id

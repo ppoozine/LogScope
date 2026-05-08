@@ -19,13 +19,12 @@ def _make_vendor(slug: str = "acme") -> Vendor:
     return v
 
 
-def _make_product(vendor_id: uuid.UUID, slug: str = "p1", category: str = "network") -> Product:
+def _make_product(vendor_id: uuid.UUID, slug: str = "p1") -> Product:
     p = Product()
     p.id = uuid.uuid4()
     p.vendor_id = vendor_id
     p.name = "P1"
     p.slug = slug
-    p.category = category
     p.status = "active"
     return p
 
@@ -104,25 +103,6 @@ class TestLibraryOverview:
         # Assert
         assert groups[0].products[0].is_empty is True
         assert groups[0].products[0].log_type_counts.total == 0
-
-    async def test_filters_by_category(self):
-        """Should drop products whose category doesn't match filter."""
-        # Arrange
-        vendor = _make_vendor()
-        p1 = _make_product(vendor.id, "p1", category="network")
-        p2 = _make_product(vendor.id, "p2", category="endpoint")
-        service = _make_service(
-            vendors=[vendor],
-            products={vendor.id: [p1, p2]},
-            log_types={},
-        )
-
-        # Act
-        groups = await service.overview(category="network")
-
-        # Assert
-        assert len(groups[0].products) == 1
-        assert groups[0].products[0].slug == "p1"
 
 
 class TestLibraryOverviewQ:
