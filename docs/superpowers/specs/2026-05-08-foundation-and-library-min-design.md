@@ -377,7 +377,7 @@ class PaginatedResponse(BaseModel, Generic[T]):
 
 | 步驟 | 行為 |
 |---|---|
-| `POST /api/v1/auth/login` | body: `{email, password}`；驗證 bcrypt → 產生 `session_id (UUID)` → 寫入 Redis `session:{session_id}` = `{user_id, created_at}`，TTL 30 天 → 回 `Set-Cookie: session=<id>; HttpOnly; Secure; SameSite=Lax; Path=/` |
+| `POST /api/v1/auth/login` | body: `{email, password}`；驗證 bcrypt → 產生 `session_id (UUID hex)` → 寫入 Redis `session:{session_id}` = `user_id`，TTL 30 天 → 回 `Set-Cookie: session=<id>; HttpOnly; SameSite=Lax; Path=/`（`Secure` 旗標由 `SESSION_COOKIE_SECURE` 控制；cookie 名固定 `session` 不外露為 setting） |
 | `POST /api/v1/auth/logout` | 從 cookie 取 session_id → `DEL session:{session_id}` → 回 `Set-Cookie: session=; Max-Age=0` |
 | `GET /api/v1/auth/me` | dep `current_user` 解析 cookie → Redis 拿 user_id → DB 查 user 回傳 |
 
@@ -995,7 +995,7 @@ DATABASE_URL=postgresql+asyncpg://logscope:logscope@localhost:5432/logscope
 REDIS_URL=redis://localhost:6379/0
 
 # Session
-SESSION_COOKIE_NAME=session
+SESSION_COOKIE_SECURE=false
 SESSION_TTL_SECONDS=2592000
 
 # Initial admin（migration 時 seed）
