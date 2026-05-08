@@ -320,6 +320,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analyzer/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse */
+        post: operations["parse_api_v1_analyzer_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyzer/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Match */
+        post: operations["match_api_v1_analyzer_match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -344,6 +378,14 @@ export interface components {
         /** DataResponse[LogTypeRead] */
         DataResponse_LogTypeRead_: {
             data: components["schemas"]["LogTypeRead"];
+        };
+        /** DataResponse[MatchResponse] */
+        DataResponse_MatchResponse_: {
+            data: components["schemas"]["MatchResponse"];
+        };
+        /** DataResponse[ParseResponse] */
+        DataResponse_ParseResponse_: {
+            data: components["schemas"]["ParseResponse"];
         };
         /** DataResponse[ParseRuleRead] */
         DataResponse_ParseRuleRead_: {
@@ -631,6 +673,39 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MatchCandidate */
+        MatchCandidate: {
+            /** Vendor Slug */
+            vendor_slug: string;
+            /** Product Slug */
+            product_slug: string;
+            /**
+             * Log Type Id
+             * Format: uuid
+             */
+            log_type_id: string;
+            /** Log Type Name */
+            log_type_name: string;
+            /** Confidence */
+            confidence: number;
+            /** Reason */
+            reason: string;
+        };
+        /** MatchRequest */
+        MatchRequest: {
+            /** Raw Log */
+            raw_log: string;
+            /**
+             * Top K
+             * @default 3
+             */
+            top_k: number;
+        };
+        /** MatchResponse */
+        MatchResponse: {
+            /** Candidates */
+            candidates: components["schemas"]["MatchCandidate"][];
+        };
         /** OverviewProduct */
         OverviewProduct: {
             /**
@@ -670,6 +745,58 @@ export interface components {
             vendor: components["schemas"]["OverviewVendor"];
             /** Products */
             products: components["schemas"]["OverviewProduct"][];
+        };
+        /** ParseRequest */
+        ParseRequest: {
+            /** Vrl Code */
+            vrl_code: string;
+            /** Logs */
+            logs: string[];
+            /**
+             * Engine Version
+             * @default 0.32
+             * @enum {string}
+             */
+            engine_version: "0.25" | "0.32";
+        };
+        /** ParseResponse */
+        ParseResponse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ok" | "compile_error" | "empty";
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "0.25" | "0.32";
+            /** Compile Error */
+            compile_error?: string | null;
+            summary?: components["schemas"]["ParseSummary"] | null;
+            /**
+             * Results
+             * @default []
+             */
+            results: components["schemas"]["ParseResultItem"][];
+        };
+        /** ParseResultItem */
+        ParseResultItem: {
+            /** Index */
+            index: number;
+            /** Input */
+            input: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "success" | "error";
+            /** Output */
+            output?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
         };
         /** ParseRuleCreate */
         ParseRuleCreate: {
@@ -730,6 +857,15 @@ export interface components {
             engine_version?: ("0.25" | "0.32") | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** ParseSummary */
+        ParseSummary: {
+            /** Total */
+            total: number;
+            /** Success */
+            success: number;
+            /** Error */
+            error: number;
         };
         /** ProductCreate */
         ProductCreate: {
@@ -1932,6 +2068,76 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_api_v1_analyzer_parse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_ParseResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_api_v1_analyzer_match_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_MatchResponse_"];
+                };
             };
             /** @description Validation Error */
             422: {
