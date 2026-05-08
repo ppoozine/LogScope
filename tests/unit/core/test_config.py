@@ -13,7 +13,7 @@ class TestSettings:
         monkeypatch.setenv("LOGSCOPE_ADMIN_PASSWORD", "x")
 
         # Act
-        settings = Settings()
+        settings = Settings()  # type: ignore[call-arg]
 
         # Assert
         assert settings.database_url == "postgresql+asyncpg://u:p@h:5432/db"
