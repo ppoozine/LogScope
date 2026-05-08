@@ -53,6 +53,20 @@ class TestProductRepositoryListByVendor:
         # Assert
         assert result == products
 
+    async def test_list_by_vendor_filters_by_q(self):
+        """list_by_vendor(q='pan') should only return products whose name matches."""
+        # Arrange
+        vendor_id = uuid.uuid4()
+        p1 = _make_product("pan-os", vendor_id)
+        session = make_mock_session_for_list([p1])
+        repo = ProductRepository(session)
+
+        # Act
+        result = await repo.list_by_vendor(vendor_id, q="pan")
+
+        # Assert
+        assert result == [p1]
+
 
 class TestProductRepositoryCreate:
     """Tests for ProductRepository.create()."""

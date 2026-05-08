@@ -27,7 +27,6 @@ class Product(Base, TimestampMixin):
     version: Mapped[str | None] = mapped_column(String(50), nullable=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     deploy_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
-    category: Mapped[str | None] = mapped_column(String(50), nullable=True, index=True)
     doc_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
     created_by: Mapped[uuid.UUID | None] = mapped_column(

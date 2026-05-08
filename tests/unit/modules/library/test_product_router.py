@@ -30,12 +30,31 @@ def _make_product() -> Product:
     p.version = None
     p.description = None
     p.deploy_type = None
-    p.category = "network"
     p.doc_url = None
     p.status = "active"
     p.created_at = datetime.now(UTC)
     p.updated_at = datetime.now(UTC)
     return p
+
+
+def _make_product_detail():
+    """Build a minimal ProductDetail for router test."""
+    from app.modules.library.schemas import ProductDetail
+
+    return ProductDetail(
+        id=uuid.uuid4(),
+        vendor_id=uuid.uuid4(),
+        name="PAN-OS",
+        slug="pan-os",
+        version=None,
+        description=None,
+        deploy_type=None,
+        doc_url=None,
+        status="active",
+        created_at=datetime.now(UTC),
+        updated_at=datetime.now(UTC),
+        log_types=[],
+    )
 
 
 class TestProductListByVendor:
@@ -61,10 +80,10 @@ class TestProductGet:
     """Tests for GET /api/v1/library/vendors/{vendor_slug}/products/{slug}."""
 
     async def test_returns_product(self, app: FastAPI, client: AsyncClient):
-        """Should return 200 with product body."""
+        """Should return 200 with ProductDetail body (nested)."""
         # Arrange
         fake = AsyncMock()
-        fake.get_by_vendor_and_slug = AsyncMock(return_value=_make_product())
+        fake.get_detail = AsyncMock(return_value=_make_product_detail())
         app.dependency_overrides[get_product_service] = lambda: fake
         app.dependency_overrides[current_user] = _user
 
@@ -73,7 +92,9 @@ class TestProductGet:
 
         # Assert
         assert r.status_code == 200
-        assert r.json()["data"]["slug"] == "pan-os"
+        body = r.json()
+        assert body["data"]["slug"] == "pan-os"
+        assert "log_types" in body["data"]
 
 
 class TestProductCreate:

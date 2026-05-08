@@ -8,10 +8,17 @@ from app.common.auth import current_user
 from app.common.schemas import DataResponse
 from app.core.database import get_db_session
 from app.modules.auth.models.user import User
+from app.modules.library.repositories.field_schema_repository import (
+    FieldSchemaRepository,
+)
+from app.modules.library.repositories.log_type_repository import LogTypeRepository
+from app.modules.library.repositories.parse_rule_repository import ParseRuleRepository
 from app.modules.library.repositories.product_repository import ProductRepository
+from app.modules.library.repositories.sample_log_repository import SampleLogRepository
 from app.modules.library.repositories.vendor_repository import VendorRepository
 from app.modules.library.schemas import (
     ProductCreate,
+    ProductDetail,
     ProductRead,
     ProductUpdate,
 )
@@ -23,7 +30,14 @@ router = APIRouter()
 async def get_product_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
 ) -> ProductService:
-    return ProductService(ProductRepository(session), VendorRepository(session))
+    return ProductService(
+        ProductRepository(session),
+        VendorRepository(session),
+        LogTypeRepository(session),
+        FieldSchemaRepository(session),
+        ParseRuleRepository(session),
+        SampleLogRepository(session),
+    )
 
 
 @router.get(
@@ -41,16 +55,16 @@ async def list_products(
 
 @router.get(
     "/vendors/{vendor_slug}/products/{product_slug}",
-    response_model=DataResponse[ProductRead],
+    response_model=DataResponse[ProductDetail],
 )
 async def get_product(
     vendor_slug: str,
     product_slug: str,
     service: Annotated[ProductService, Depends(get_product_service)],
     _user: Annotated[User, Depends(current_user)],
-) -> DataResponse[ProductRead]:
-    product = await service.get_by_vendor_and_slug(vendor_slug, product_slug)
-    return DataResponse(data=ProductRead.model_validate(product))
+) -> DataResponse[ProductDetail]:
+    detail = await service.get_detail(vendor_slug, product_slug)
+    return DataResponse(data=detail)
 
 
 @router.post(

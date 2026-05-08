@@ -20,8 +20,17 @@ class ProductRepository:
         )
         return result.scalar_one_or_none()
 
-    async def list_by_vendor(self, vendor_id: uuid.UUID) -> list[Product]:
-        stmt = select(Product).where(Product.vendor_id == vendor_id).order_by(Product.name)
+    async def list_by_vendor(
+        self,
+        vendor_id: uuid.UUID,
+        *,
+        q: str | None = None,
+    ) -> list[Product]:
+        stmt = select(Product).where(Product.vendor_id == vendor_id)
+        if q:
+            pattern = f"%{q}%"
+            stmt = stmt.where(Product.name.ilike(pattern))
+        stmt = stmt.order_by(Product.name)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

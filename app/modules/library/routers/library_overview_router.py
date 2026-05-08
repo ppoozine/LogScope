@@ -12,7 +12,6 @@ from app.modules.library.repositories.product_repository import ProductRepositor
 from app.modules.library.repositories.vendor_repository import VendorRepository
 from app.modules.library.schemas import (
     OverviewVendorGroup,
-    ProductCategory,
 )
 from app.modules.library.services.library_overview_service import (
     LibraryOverviewService,
@@ -38,8 +37,11 @@ async def get_library_overview_service(
 async def overview(
     service: Annotated[LibraryOverviewService, Depends(get_library_overview_service)],
     _user: Annotated[User, Depends(current_user)],
-    category: Annotated[ProductCategory | None, Query()] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
 ) -> DataResponse[list[OverviewVendorGroup]]:
-    groups = await service.overview(category=category, log_type_status=status_filter)
+    groups = await service.overview(
+        log_type_status=status_filter,
+        q=q,
+    )
     return DataResponse(data=groups)
