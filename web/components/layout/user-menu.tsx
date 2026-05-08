@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -34,16 +35,20 @@ export function UserMenu() {
         {initial}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>
-          <div className="flex flex-col">
-            <span className="text-sm font-medium">{me.display_name ?? "User"}</span>
-            <span className="text-xs text-muted-foreground">{me.email}</span>
-          </div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">{me.display_name ?? "User"}</span>
+              <span className="text-xs text-muted-foreground">{me.email}</span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} disabled={logout.isPending}>
-          {logout.isPending ? "Signing out..." : "Sign out"}
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          <DropdownMenuItem onClick={handleLogout} disabled={logout.isPending}>
+            {logout.isPending ? "Signing out..." : "Sign out"}
+          </DropdownMenuItem>
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
