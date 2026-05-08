@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 
+import { CopilotProvider } from "@/components/providers/copilot-context";
 import { AppQueryClientProvider } from "@/components/providers/query-client-provider";
 
 import "./globals.css";
@@ -29,7 +30,9 @@ export default function RootLayout({
   return (
     <html lang="zh-TW" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-background text-foreground">
-        <AppQueryClientProvider>{children}</AppQueryClientProvider>
+        <AppQueryClientProvider>
+          <CopilotProvider>{children}</CopilotProvider>
+        </AppQueryClientProvider>
       </body>
     </html>
   );
