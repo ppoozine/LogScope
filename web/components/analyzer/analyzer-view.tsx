@@ -82,8 +82,9 @@ export function AnalyzerView({ preload, noKey }: Props) {
       vrl_code: debouncedVrl,
       logs: debouncedLogs.split("\n"),
       engine_version: engineVersion,
+      log_type_id: logTypeId ?? undefined,
     });
-  }, [debouncedVrl, debouncedLogs, engineVersion, parseMutate]);
+  }, [debouncedVrl, debouncedLogs, engineVersion, parseMutate, logTypeId]);
 
   const matchMutate = match.mutate;
   // Auto match
@@ -118,8 +119,9 @@ export function AnalyzerView({ preload, noKey }: Props) {
       vrl_code: vrl,
       logs: logs.split("\n"),
       engine_version: engineVersion,
+      log_type_id: logTypeId ?? undefined,
     });
-  }, [vrl, logs, engineVersion, parseMutate]);
+  }, [vrl, logs, engineVersion, parseMutate, logTypeId]);
 
   const handleRunBoth = useCallback(async () => {
     if (!vrl.trim() || !logs.trim()) return;
@@ -132,11 +134,21 @@ export function AnalyzerView({ preload, noKey }: Props) {
       const [r25, r32] = await Promise.all([
         apiFetch<{ data: ParseResponse }>("/api/v1/analyzer/parse", {
           method: "POST",
-          body: { vrl_code: vrl, logs: logLines, engine_version: "0.25" },
+          body: {
+            vrl_code: vrl,
+            logs: logLines,
+            engine_version: "0.25",
+            log_type_id: logTypeId ?? undefined,
+          },
         }),
         apiFetch<{ data: ParseResponse }>("/api/v1/analyzer/parse", {
           method: "POST",
-          body: { vrl_code: vrl, logs: logLines, engine_version: "0.32" },
+          body: {
+            vrl_code: vrl,
+            logs: logLines,
+            engine_version: "0.32",
+            log_type_id: logTypeId ?? undefined,
+          },
         }),
       ]);
       setV25Result(r25.data);
@@ -144,7 +156,7 @@ export function AnalyzerView({ preload, noKey }: Props) {
     } finally {
       setDiffPending(false);
     }
-  }, [vrl, logs]);
+  }, [vrl, logs, logTypeId]);
 
   const handleFormat = useCallback(() => {
     setVrl((prev) => formatVrlSource(prev));
