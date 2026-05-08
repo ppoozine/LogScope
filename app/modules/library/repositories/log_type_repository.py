@@ -40,9 +40,7 @@ class LogTypeRepository:
         await self._session.delete(log_type)
         await self._session.flush()
 
-    async def list_ids_for_vendor_product(
-        self, vendor_slug: str, product_slug: str
-    ) -> list[uuid.UUID]:
+    async def list_ids_for_vendor_product(self, vendor_slug: str, product_slug: str) -> list[uuid.UUID]:
         """Return all log_type ids under vendor/product (any status)."""
         from app.modules.library.models.product import Product
         from app.modules.library.models.vendor import Vendor

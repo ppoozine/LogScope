@@ -37,12 +37,19 @@ async def test_ensure_is_idempotent(ch_client):
 async def test_table_has_expected_columns(ch_client):
     await ensure_parse_events_table(ch_client)
     rows = await ch_client.query(
-        "SELECT name FROM system.columns "
-        "WHERE database = currentDatabase() AND table = 'parse_events'"
+        "SELECT name FROM system.columns WHERE database = currentDatabase() AND table = 'parse_events'"
     )
     columns = {r[0] for r in rows.result_rows}
     assert columns == {
-        "ts", "log_type_id", "parse_rule_id", "engine_version",
-        "total", "success", "error", "latency_ms",
-        "user_id", "raw_log_hash", "vrl_hash",
+        "ts",
+        "log_type_id",
+        "parse_rule_id",
+        "engine_version",
+        "total",
+        "success",
+        "error",
+        "latency_ms",
+        "user_id",
+        "raw_log_hash",
+        "vrl_hash",
     }

@@ -28,9 +28,7 @@ class StatsService:
     def enabled(self) -> bool:
         return self._client is not None
 
-    async def log_type_stats(
-        self, log_type_id: uuid.UUID, range_: StatsRange
-    ) -> LogTypeStats:
+    async def log_type_stats(self, log_type_id: uuid.UUID, range_: StatsRange) -> LogTypeStats:
         days = RANGE_TO_DAYS[range_]
         if not self.enabled or self._client is None:
             return LogTypeStats(
@@ -57,9 +55,7 @@ class StatsService:
         )
         return self._build_log_type_stats(result.result_rows, days)
 
-    async def product_coverage(
-        self, log_type_ids: list[uuid.UUID], range_: StatsRange
-    ) -> ProductCoverage:
+    async def product_coverage(self, log_type_ids: list[uuid.UUID], range_: StatsRange) -> ProductCoverage:
         days = RANGE_TO_DAYS[range_]
         if not self.enabled or self._client is None or not log_type_ids:
             return ProductCoverage(enabled=self.enabled, range_days=days, log_types=[])
@@ -106,10 +102,7 @@ class StatsService:
             enabled=True,
             range_days=days,
             timeline=timeline,
-            engine_usage=[
-                EngineUsage(engine_version=cast("EngineVersion", k), count=v)
-                for k, v in engines.items()
-            ],
+            engine_usage=[EngineUsage(engine_version=cast("EngineVersion", k), count=v) for k, v in engines.items()],
             totals=StatsTotals(
                 total=total_sum,
                 success=success_sum,
@@ -119,13 +112,9 @@ class StatsService:
         )
 
     @staticmethod
-    def _build_coverage(
-        rows: list[tuple], log_type_ids: list[uuid.UUID], days: int
-    ) -> ProductCoverage:
+    def _build_coverage(rows: list[tuple], log_type_ids: list[uuid.UUID], days: int) -> ProductCoverage:
         # group rows by log_type_id, pre-sort dates ascending
-        by_lt: dict[uuid.UUID, dict[date, tuple[int, int]]] = {
-            lt: {} for lt in log_type_ids
-        }
+        by_lt: dict[uuid.UUID, dict[date, tuple[int, int]]] = {lt: {} for lt in log_type_ids}
         for lt_id, day, total, success in rows:
             if lt_id in by_lt:
                 by_lt[lt_id][day] = (int(total), int(success))

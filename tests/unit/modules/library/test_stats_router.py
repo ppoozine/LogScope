@@ -94,12 +94,8 @@ class TestProductCoverageRoute:
                 enabled=True,
                 range_days=7,
                 log_types=[
-                    CoverageLogType(
-                        log_type_id=ids[0], sparkline=[0.0] * 7, success_rate_avg=0.0, volume=0
-                    ),
-                    CoverageLogType(
-                        log_type_id=ids[1], sparkline=[0.0] * 7, success_rate_avg=0.0, volume=0
-                    ),
+                    CoverageLogType(log_type_id=ids[0], sparkline=[0.0] * 7, success_rate_avg=0.0, volume=0),
+                    CoverageLogType(log_type_id=ids[1], sparkline=[0.0] * 7, success_rate_avg=0.0, volume=0),
                 ],
             )
         )

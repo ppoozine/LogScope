@@ -49,9 +49,7 @@ async def test_two_drafts_promote_simultaneously_only_one_wins(authenticated_cli
     draft_a = r.json()["data"]
 
     # Promote first draft → success, becomes published
-    r = await authenticated_client.post(
-        f"/api/v1/library/parse_rules/{draft_a['id']}/promote"
-    )
+    r = await authenticated_client.post(f"/api/v1/library/parse_rules/{draft_a['id']}/promote")
     assert r.status_code == 200
     assert r.json()["data"]["status"] == "published"
 
@@ -64,16 +62,12 @@ async def test_two_drafts_promote_simultaneously_only_one_wins(authenticated_cli
     draft_b = r.json()["data"]
 
     # Promote second draft → success, draft_a auto-archived
-    r = await authenticated_client.post(
-        f"/api/v1/library/parse_rules/{draft_b['id']}/promote"
-    )
+    r = await authenticated_client.post(f"/api/v1/library/parse_rules/{draft_b['id']}/promote")
     assert r.status_code == 200
     assert r.json()["data"]["status"] == "published"
 
     # Confirm draft_a is archived
-    r = await authenticated_client.get(
-        f"/api/v1/library/log_types/{lt['id']}/parse_rules"
-    )
+    r = await authenticated_client.get(f"/api/v1/library/log_types/{lt['id']}/parse_rules")
     rules = {x["id"]: x["status"] for x in r.json()["data"]}
     assert rules[draft_a["id"]] == "archived"
     assert rules[draft_b["id"]] == "published"
