@@ -59,9 +59,9 @@ export function ProductDetailView({ vendorSlug, detail }: Props) {
           {activeLogType && (
             <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
               <FieldTable fields={activeLogType.fields} />
-              <SampleList samples={activeLogType.samples} />
+              <SampleList samples={activeLogType.samples} logTypeId={activeLogType.id} />
               <div className="lg:col-span-2">
-                <VrlDisplay rule={activeLogType.current_parse_rule} />
+                <VrlDisplay rule={activeLogType.current_parse_rule} logTypeId={activeLogType.id} />
               </div>
             </div>
           )}

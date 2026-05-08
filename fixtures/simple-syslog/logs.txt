@@ -1,0 +1,3 @@
+<165>1 2026-05-08T10:00:00Z app01 myapp 1234 ID47 - User alice logged in from 10.0.0.1
+<134>1 2026-05-08T10:01:12Z app01 myapp 1234 ID48 - Slow query: 1842ms
+<131>1 2026-05-08T10:02:33Z app01 myapp 1234 ID49 - DB timeout, retry=3

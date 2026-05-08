@@ -1,9 +1,13 @@
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import type { components } from "@/lib/api/types";
 
 type ParseRuleRead = components["schemas"]["ParseRuleRead"];
 
-export function VrlDisplay({ rule }: { rule: ParseRuleRead | null | undefined }) {
+type Props = { rule: ParseRuleRead | null | undefined; logTypeId?: string };
+
+export function VrlDisplay({ rule, logTypeId }: Props) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <header className="mb-3 flex items-center justify-between">
@@ -16,10 +20,19 @@ export function VrlDisplay({ rule }: { rule: ParseRuleRead | null | undefined })
           )}
         </div>
         <div className="flex gap-2">
-          <Button size="sm" variant="outline" disabled title="Coming in spec C">
-            載入 Analyzer
-          </Button>
-          <Button size="sm" variant="outline" disabled title="Coming in spec C">
+          {logTypeId ? (
+            <Link
+              href={`/analyzer?log_type_id=${logTypeId}`}
+              className="inline-flex h-8 items-center rounded-md border border-input bg-background px-3 text-sm hover:bg-accent"
+            >
+              載入 Analyzer
+            </Link>
+          ) : (
+            <Button size="sm" variant="outline" disabled title="Coming in spec C">
+              載入 Analyzer
+            </Button>
+          )}
+          <Button size="sm" variant="outline" disabled title="Coming in spec D">
             編輯
           </Button>
         </div>

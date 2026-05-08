@@ -320,6 +320,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analyzer/parse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Parse */
+        post: operations["parse_api_v1_analyzer_parse_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyzer/fixtures": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List Fixtures */
+        get: operations["list_fixtures_api_v1_analyzer_fixtures_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyzer/check": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check */
+        post: operations["check_api_v1_analyzer_check_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyzer/match-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Match Availability */
+        get: operations["match_availability_api_v1_analyzer_match_availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analyzer/match": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Match */
+        post: operations["match_api_v1_analyzer_match_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -341,9 +426,59 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CheckRequest */
+        CheckRequest: {
+            /** Vrl Code */
+            vrl_code: string;
+            /**
+             * Engine Version
+             * @default 0.32
+             * @enum {string}
+             */
+            engine_version: "0.25" | "0.32";
+        };
+        /** CheckResponse */
+        CheckResponse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ok" | "compile_error";
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "0.25" | "0.32";
+            /** Compile Error */
+            compile_error?: string | null;
+        };
+        /** DataResponse[CheckResponse] */
+        DataResponse_CheckResponse_: {
+            data: components["schemas"]["CheckResponse"];
+        };
+        /** DataResponse[FixtureListResponse] */
+        DataResponse_FixtureListResponse_: {
+            data: components["schemas"]["FixtureListResponse"];
+        };
+        /** DataResponse[LogTypeDetail] */
+        DataResponse_LogTypeDetail_: {
+            data: components["schemas"]["LogTypeDetail"];
+        };
         /** DataResponse[LogTypeRead] */
         DataResponse_LogTypeRead_: {
             data: components["schemas"]["LogTypeRead"];
+        };
+        /** DataResponse[MatchAvailabilityResponse] */
+        DataResponse_MatchAvailabilityResponse_: {
+            data: components["schemas"]["MatchAvailabilityResponse"];
+        };
+        /** DataResponse[MatchResponse] */
+        DataResponse_MatchResponse_: {
+            data: components["schemas"]["MatchResponse"];
+        };
+        /** DataResponse[ParseResponse] */
+        DataResponse_ParseResponse_: {
+            data: components["schemas"]["ParseResponse"];
         };
         /** DataResponse[ParseRuleRead] */
         DataResponse_ParseRuleRead_: {
@@ -474,6 +609,29 @@ export interface components {
             example_value: string | null;
             /** Sort Order */
             sort_order: number;
+        };
+        /** FixtureItem */
+        FixtureItem: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Description */
+            description: string;
+            /** Vrl */
+            vrl: string;
+            /** Logs */
+            logs: string;
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "0.25" | "0.32";
+        };
+        /** FixtureListResponse */
+        FixtureListResponse: {
+            /** Fixtures */
+            fixtures: components["schemas"]["FixtureItem"][];
         };
         /** HTTPValidationError */
         HTTPValidationError: {
@@ -631,6 +789,44 @@ export interface components {
             /** Password */
             password: string;
         };
+        /** MatchAvailabilityResponse */
+        MatchAvailabilityResponse: {
+            /** Available */
+            available: boolean;
+        };
+        /** MatchCandidate */
+        MatchCandidate: {
+            /** Vendor Slug */
+            vendor_slug: string;
+            /** Product Slug */
+            product_slug: string;
+            /**
+             * Log Type Id
+             * Format: uuid
+             */
+            log_type_id: string;
+            /** Log Type Name */
+            log_type_name: string;
+            /** Confidence */
+            confidence: number;
+            /** Reason */
+            reason: string;
+        };
+        /** MatchRequest */
+        MatchRequest: {
+            /** Raw Log */
+            raw_log: string;
+            /**
+             * Top K
+             * @default 3
+             */
+            top_k: number;
+        };
+        /** MatchResponse */
+        MatchResponse: {
+            /** Candidates */
+            candidates: components["schemas"]["MatchCandidate"][];
+        };
         /** OverviewProduct */
         OverviewProduct: {
             /**
@@ -670,6 +866,58 @@ export interface components {
             vendor: components["schemas"]["OverviewVendor"];
             /** Products */
             products: components["schemas"]["OverviewProduct"][];
+        };
+        /** ParseRequest */
+        ParseRequest: {
+            /** Vrl Code */
+            vrl_code: string;
+            /** Logs */
+            logs: string[];
+            /**
+             * Engine Version
+             * @default 0.32
+             * @enum {string}
+             */
+            engine_version: "0.25" | "0.32";
+        };
+        /** ParseResponse */
+        ParseResponse: {
+            /**
+             * Kind
+             * @enum {string}
+             */
+            kind: "ok" | "compile_error" | "empty";
+            /**
+             * Engine
+             * @enum {string}
+             */
+            engine: "0.25" | "0.32";
+            /** Compile Error */
+            compile_error?: string | null;
+            summary?: components["schemas"]["ParseSummary"] | null;
+            /**
+             * Results
+             * @default []
+             */
+            results: components["schemas"]["ParseResultItem"][];
+        };
+        /** ParseResultItem */
+        ParseResultItem: {
+            /** Index */
+            index: number;
+            /** Input */
+            input: string;
+            /**
+             * Status
+             * @enum {string}
+             */
+            status: "success" | "error";
+            /** Output */
+            output?: {
+                [key: string]: unknown;
+            } | null;
+            /** Error */
+            error?: string | null;
         };
         /** ParseRuleCreate */
         ParseRuleCreate: {
@@ -730,6 +978,15 @@ export interface components {
             engine_version?: ("0.25" | "0.32") | null;
             /** Notes */
             notes?: string | null;
+        };
+        /** ParseSummary */
+        ParseSummary: {
+            /** Total */
+            total: number;
+            /** Success */
+            success: number;
+            /** Error */
+            error: number;
         };
         /** ProductCreate */
         ProductCreate: {
@@ -1551,7 +1808,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DataResponse_LogTypeRead_"];
+                    "application/json": components["schemas"]["DataResponse_LogTypeDetail_"];
                 };
             };
             /** @description Validation Error */
@@ -1932,6 +2189,173 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    parse_api_v1_analyzer_parse_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParseRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_ParseResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_fixtures_api_v1_analyzer_fixtures_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_FixtureListResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    check_api_v1_analyzer_check_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_CheckResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_availability_api_v1_analyzer_match_availability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_MatchAvailabilityResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_api_v1_analyzer_match_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MatchRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_MatchResponse_"];
+                };
             };
             /** @description Validation Error */
             422: {

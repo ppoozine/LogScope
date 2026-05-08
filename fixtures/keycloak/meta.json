@@ -1,0 +1,5 @@
+{
+  "name": "Keycloak（RFC5424 syslog + key=value + JSON details）",
+  "description": "從 POC 拷來的真實 Keycloak audit log，混合 syslog 框 + key=value pair + JSON envelope 的多階段 parse。",
+  "engine": "0.32"
+}

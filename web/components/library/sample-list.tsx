@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { Button } from "@/components/ui/button";
 import type { components } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
@@ -10,7 +12,9 @@ const LABEL_COLOR: Record<string, string> = {
   error: "bg-red-50 text-red-700",
 };
 
-export function SampleList({ samples }: { samples: SampleLogRead[] }) {
+type Props = { samples: SampleLogRead[]; logTypeId?: string };
+
+export function SampleList({ samples, logTypeId }: Props) {
   return (
     <section className="rounded-lg border bg-card p-4">
       <h3 className="mb-3 text-sm font-semibold">Sample logs（{samples.length}）</h3>
@@ -29,15 +33,24 @@ export function SampleList({ samples }: { samples: SampleLogRead[] }) {
                 >
                   {sample.label}
                 </span>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  disabled
-                  title="Coming in spec C"
-                  className="ml-auto h-6 text-xs"
-                >
-                  在 Analyzer 試打
-                </Button>
+                {logTypeId ? (
+                  <Link
+                    href={`/analyzer?log_type_id=${logTypeId}&sample_id=${sample.id}`}
+                    className="ml-auto inline-flex h-6 items-center rounded-md px-2 text-xs hover:bg-accent"
+                  >
+                    在 Analyzer 試打
+                  </Link>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled
+                    title="Coming in spec C"
+                    className="ml-auto h-6 text-xs"
+                  >
+                    在 Analyzer 試打
+                  </Button>
+                )}
               </div>
               <pre className="overflow-x-auto whitespace-pre-wrap break-words text-[11px] text-muted-foreground">
                 {sample.raw_log}

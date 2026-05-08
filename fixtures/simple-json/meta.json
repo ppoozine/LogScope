@@ -1,0 +1,5 @@
+{
+  "name": "Simple JSON",
+  "description": "JSON-per-line 應用 log，最直接的場景。",
+  "engine": "0.32"
+}

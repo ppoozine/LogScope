@@ -16,6 +16,9 @@ dependencies = [
     "passlib[bcrypt]>=1.7.4",
     "python-multipart>=0.0.18",
     "httpx>=0.28",
+    "anthropic>=0.40,<1.0",
+    "pyvrl-playground-v25",
+    "pyvrl-playground-v32",
 ]
 
 [dependency-groups]
@@ -41,3 +44,7 @@ asyncio_mode = "auto"
 markers = [
     "integration: marks tests as integration tests (requires real Postgres + Redis)",
 ]
+
+[tool.uv.sources]
+pyvrl-playground-v25 = { path = "engine/v25" }
+pyvrl-playground-v32 = { path = "engine/v32" }

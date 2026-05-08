@@ -1,0 +1,16 @@
+[package]
+name = "pyvrl_playground_v32"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "pyvrl_playground_v32"
+crate-type = ["cdylib"]
+
+[dependencies]
+# abi3-py38 makes the wheel a stable-ABI wheel: build once, run on any
+# CPython >= 3.8 (incl. 3.13 / 3.14 / future). It also disables pyo3's
+# host-Python max-version check, so we no longer need
+# PYO3_USE_ABI3_FORWARD_COMPATIBILITY.
+pyo3 = { version = "0.22", features = ["abi3-py38", "extension-module"] }
+vrl = "0.32.0"

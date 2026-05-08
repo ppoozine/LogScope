@@ -1,0 +1,491 @@
+pattern_matched = false
+syslog_ts = null
+syslog_host = null
+syslog_appname = null
+syslog_procid = null
+syslog_msgid = null
+
+# ============================================================
+# Branch 1: pure JSON envelope
+# ============================================================
+if !pattern_matched {
+    json_data, err = parse_json(.vendorRaw)
+    if err == null {
+      .vendorParsed = json_data
+      pattern_matched = true
+    }
+}
+
+# ============================================================
+# Branches 2 & 3: RFC5424 syslog (shared envelope parse)
+#   Branch 2 = JSON body (official Keycloak format)
+#   Branch 3 = kv-pair body (custom format)
+# ============================================================
+if !pattern_matched {
+syslog_attempt, serr = parse_syslog(.vendorRaw)
+if serr == null {
+  # Branch 2: try JSON body first
+  json_data, jerr = parse_json(string!(syslog_attempt.message))
+  if jerr == null {
+    .vendorParsed = json_data
+    syslog_ts = syslog_attempt.timestamp
+    if exists(syslog_attempt.hostname) { syslog_host = syslog_attempt.hostname }
+    if exists(syslog_attempt.appname) { syslog_appname = syslog_attempt.appname }
+    if exists(syslog_attempt.procid) { syslog_procid = syslog_attempt.procid }
+    if exists(syslog_attempt.msgid) { syslog_msgid = syslog_attempt.msgid }
+    # Note: SD element not extracted here — JSON body is self-contained in official Keycloak format
+    pattern_matched = true
+  } else {
+    # Branch 3: kv-pair body (custom format)
+    message = string!(syslog_attempt.message)
+    # Normalize "Keycloak event=" prefix to "type=" so kv-parse is uniform
+    message = replace(message, r'^Keycloak event=', "type=")
+
+    # Try to parse kv body; handle two tail formats:
+    #   user-event format:  "... details=<json>"
+    #   admin-event format: "... representation=<json_or_dash>"
+    kv_main = ""
+    kv_tail_key = ""
+    kv_tail_val = ""
+    kv_parse_ok = false
+
+    details_match, dm_err = parse_grok(message, "%{DATA:kv_portion}details=%{GREEDYDATA:details_json}")
+    if dm_err == null {
+      kv_main = string!(details_match.kv_portion)
+      kv_tail_key = "details"
+      kv_tail_val = string!(details_match.details_json)
+      kv_parse_ok = true
+    } else {
+      rep_match, rm_err = parse_grok(message, "%{DATA:kv_portion}representation=%{GREEDYDATA:rep_val}")
+      if rm_err == null {
+        kv_main = string!(rep_match.kv_portion)
+        kv_tail_key = "representation"
+        kv_tail_val = string!(rep_match.rep_val)
+        kv_parse_ok = true
+      }
+    }
+
+    if kv_parse_ok {
+      # Pre-extract user= via grok so multi-word unquoted values
+      # (e.g., "user=user name one ip=...") are captured correctly.
+      # parse_key_value alone splits on whitespace and either drops
+      # the trailing words (default) or folds them into the next
+      # key (with accept_standalone_key: false), corrupting both
+      # the user value and the following key.
+      pre_user_val = ""
+      user_match, um_err = parse_grok(string!(kv_main), "%{DATA}user=%{DATA:user_val} %{NOTSPACE}=%{GREEDYDATA}")
+      if um_err == null {
+        pre_user_val = string!(user_match.user_val)
+        # Strip the user=<val> segment from kv_main so parse_key_value
+        # below sees a clean stream. Use a regex that matches the
+        # exact captured value to avoid removing any other token.
+        kv_main = replace(string!(kv_main), "user=" + pre_user_val + " ", "")
+      }
+      kv_data, kv_err = parse_key_value(string!(kv_main), accept_standalone_key: false)
+      if kv_err == null {
+        .vendorParsed = kv_data
+        if pre_user_val != "" {
+          .vendorParsed.user = pre_user_val
+        }
+
+        # Parse the tail JSON value
+        t_str = kv_tail_val
+        if t_str != "-" && t_str != "{}" && t_str != "" {
+          tail_parsed, tj_err = parse_json(t_str)
+          if tj_err == null {
+            if kv_tail_key == "details" {
+              .vendorParsed.details = tail_parsed
+            } else {
+              .vendorParsed.representation = tail_parsed
+            }
+          }
+          # else: tail JSON failed to parse. Drop unparse-able representation/details values
+          # rather than storing corrupt raw JSON strings — admin canonicalization expects either
+          # parsed object or absent field, not raw string.
+        }
+
+        # Extract SD element [keycloak@<id> ...] from .vendorRaw and merge fields
+        sd_match, sd_err = parse_grok(.vendorRaw, "%{DATA}\\[keycloak@%{NUMBER:sd_id} %{DATA:sd_body}\\]")
+        if sd_err == null {
+          sd_kv, sd_kv_err = parse_key_value(string!(sd_match.sd_body))
+          if sd_kv_err == null {
+            # session -> sessionId (keycloak@32473 uses session=)
+            if exists(sd_kv.session) && !exists(.vendorParsed.sessionId) {
+              session_val = to_string(sd_kv.session) ?? ""
+              if session_val != "-" && session_val != "" {
+                .vendorParsed.sessionId = session_val
+              }
+            }
+            # sessionId (keycloak@49999 uses sessionId=)
+            if exists(sd_kv.sessionId) && !exists(.vendorParsed.sessionId) {
+              sid_val = to_string(sd_kv.sessionId) ?? ""
+              if sid_val != "-" && sid_val != "" {
+                .vendorParsed.sessionId = sid_val
+              }
+            }
+            # userId from SD (@49999) takes priority over kv body user= (which may be a username)
+            if exists(sd_kv.userId) {
+              sd_uid = to_string(sd_kv.userId) ?? ""
+              if sd_uid != "-" && sd_uid != "" {
+                # kv body user= is still at .vendorParsed.user at this point
+                kv_user = to_string(.vendorParsed.user) ?? ""
+                if kv_user != "" && kv_user != sd_uid {
+                  # kv body user is a username (different from SD UUID) — lift to details.username
+                  if !exists(.vendorParsed.details) {
+                    .vendorParsed.details = {}
+                  }
+                  if !exists(.vendorParsed.details.username) {
+                    .vendorParsed.details.username = kv_user
+                  }
+                  del(.vendorParsed.user)
+                }
+                .vendorParsed.userId = sd_uid
+              }
+            }
+            # username from SD (@49999) -> details.username if not already set
+            if exists(sd_kv.username) {
+              sd_un = to_string(sd_kv.username) ?? ""
+              if sd_un != "-" && sd_un != "" {
+                if !exists(.vendorParsed.details) {
+                  .vendorParsed.details = {}
+                }
+                if !exists(.vendorParsed.details.username) {
+                  .vendorParsed.details.username = sd_un
+                }
+              }
+            }
+            # ipAddress from SD (@49999) -> ipAddress (for user events)
+            if exists(sd_kv.ipAddress) && !exists(.vendorParsed.ipAddress) {
+              ipa_val = to_string(sd_kv.ipAddress) ?? ""
+              if ipa_val != "-" && ipa_val != "" {
+                .vendorParsed.ipAddress = ipa_val
+              }
+            }
+            # clientId from SD (@49999) -> client (for user events)
+            if exists(sd_kv.clientId) && !exists(.vendorParsed.client) {
+              cid_val = to_string(sd_kv.clientId) ?? ""
+              if cid_val != "-" && cid_val != "" {
+                .vendorParsed.client = cid_val
+              }
+            }
+            # realm from SD -> realm (overwrite only if not in kv body)
+            if exists(sd_kv.realm) && !exists(.vendorParsed.realm) {
+              r_val = to_string(sd_kv.realm) ?? ""
+              if r_val != "-" && r_val != "" {
+                .vendorParsed.realm = r_val
+              }
+            }
+          }
+        }
+
+        syslog_ts = syslog_attempt.timestamp
+        if exists(syslog_attempt.hostname) { syslog_host = syslog_attempt.hostname }
+        if exists(syslog_attempt.appname) { syslog_appname = syslog_attempt.appname }
+        if exists(syslog_attempt.procid) { syslog_procid = syslog_attempt.procid }
+        if exists(syslog_attempt.msgid) { syslog_msgid = syslog_attempt.msgid }
+        pattern_matched = true
+      }
+    }
+  }
+}
+}
+
+if !pattern_matched { abort }
+
+# ============================================================
+# Lift multi-word kv body user= values to details.username.
+# The kv body grok pre-extract above already captures multi-word
+# values correctly. A multi-word value (e.g., "user name one")
+# is a username, not a userId — lift it to details.username so
+# logonUser does not get contaminated with the wrong value.
+# Single-word non-UUID values (e.g., LOGIN_COOKIE @32473
+# user="user001") are legitimate userIds and must be preserved.
+# Runs before user-event alias canonicalization (user -> userId).
+# ============================================================
+if exists(.vendorParsed.user) {
+user_val_str, uvs_err = to_string(.vendorParsed.user)
+if uvs_err == null {
+  if contains(user_val_str, " ") {
+    if !exists(.vendorParsed.details) {
+      .vendorParsed.details = {}
+    }
+    if !exists(.vendorParsed.details.username) {
+      .vendorParsed.details.username = user_val_str
+    }
+    del(.vendorParsed.user)
+  }
+}
+}
+
+# ============================================================
+# Determine event category (user vs admin)
+# ============================================================
+
+is_admin_event = false
+# Standard JSON admin format: operationType + resourceType present
+if exists(.vendorParsed.operationType) && exists(.vendorParsed.resourceType) {
+is_admin_event = true
+} else if exists(.vendorParsed.eventCategory) {
+# Custom flat-kv admin format: eventCategory == "ADMIN_EVENT"
+ec = to_string(.vendorParsed.eventCategory) ?? ""
+if ec == "ADMIN_EVENT" {
+  is_admin_event = true
+}
+} else if exists(.vendorParsed.operation) && exists(.vendorParsed.resource) && !exists(.vendorParsed.type) {
+# Custom flat-kv admin format: operation + resource without type field
+is_admin_event = true
+} else if syslog_msgid == "org.keycloak.events.admin" {
+# Syslog MSGID marker (filled in by Task 4 syslog branches)
+is_admin_event = true
+}
+
+# ============================================================
+# Admin canonicalization: normalize both flat-kv and authDetails forms
+# ============================================================
+if is_admin_event {
+# operation -> operationType (flat-kv admin form)
+if exists(.vendorParsed.operation) && !exists(.vendorParsed.operationType) {
+  .vendorParsed.operationType = to_string!(.vendorParsed.operation)
+  del(.vendorParsed.operation)
+}
+# resource -> resourceType (flat-kv admin form)
+if exists(.vendorParsed.resource) && !exists(.vendorParsed.resourceType) {
+  .vendorParsed.resourceType = to_string!(.vendorParsed.resource)
+  del(.vendorParsed.resource)
+}
+# Flat userId -> authDetails.userId (only when authDetails not already set)
+if exists(.vendorParsed.userId) && !exists(.vendorParsed.authDetails.userId) {
+  if !exists(.vendorParsed.authDetails) {
+    .vendorParsed.authDetails = {}
+  }
+  uid_val = to_string!(.vendorParsed.userId)
+  if uid_val != "-" && uid_val != "" {
+    .vendorParsed.authDetails.userId = uid_val
+  }
+  del(.vendorParsed.userId)
+}
+# Flat client -> authDetails.clientId
+if exists(.vendorParsed.client) && !exists(.vendorParsed.authDetails.clientId) {
+  if !exists(.vendorParsed.authDetails) {
+    .vendorParsed.authDetails = {}
+  }
+  cid_val = to_string!(.vendorParsed.client)
+  if cid_val != "-" && cid_val != "" {
+    .vendorParsed.authDetails.clientId = cid_val
+  }
+  del(.vendorParsed.client)
+}
+# Flat ip -> authDetails.ipAddress
+if exists(.vendorParsed.ip) && !exists(.vendorParsed.authDetails.ipAddress) {
+  if !exists(.vendorParsed.authDetails) {
+    .vendorParsed.authDetails = {}
+  }
+  ip_val = to_string!(.vendorParsed.ip)
+  if ip_val != "-" && ip_val != "" {
+    .vendorParsed.authDetails.ipAddress = ip_val
+  }
+  del(.vendorParsed.ip)
+}
+# representation: if string, parse JSON or drop "-"; if already object, keep as-is
+if exists(.vendorParsed.representation) {
+  rep_as_str, rep_str_err = to_string(.vendorParsed.representation)
+  if rep_str_err == null {
+    if rep_as_str == "-" || rep_as_str == "" {
+      del(.vendorParsed.representation)
+    } else {
+      rep_parsed, rep_err = parse_json(rep_as_str)
+      if rep_err == null {
+        .vendorParsed.representation = rep_parsed
+      }
+      # else: keep as raw string
+    }
+  }
+  # if to_string failed (it's already an object), leave it as-is
+}
+# Always strip eventCategory (it's the detection marker, not output)
+if exists(.vendorParsed.eventCategory) {
+  del(.vendorParsed.eventCategory)
+}
+# realmId -> realm for admin events
+if exists(.vendorParsed.realmId) && !exists(.vendorParsed.realm) {
+  .vendorParsed.realm = .vendorParsed.realmId
+  del(.vendorParsed.realmId)
+}
+}
+
+# ============================================================
+# User event canonicalization: drop aliases, use canonical names
+# ============================================================
+if !is_admin_event {
+# type -> eventType
+if exists(.vendorParsed.type) {
+  .vendorParsed.eventType = to_string!(.vendorParsed.type)
+  del(.vendorParsed.type)
+}
+# realmId -> realm
+if exists(.vendorParsed.realmId) && !exists(.vendorParsed.realm) {
+  .vendorParsed.realm = .vendorParsed.realmId
+  del(.vendorParsed.realmId)
+}
+# client -> clientId
+if exists(.vendorParsed.client) && !exists(.vendorParsed.clientId) {
+  .vendorParsed.clientId = .vendorParsed.client
+  del(.vendorParsed.client)
+}
+# user -> userId
+if exists(.vendorParsed.user) && !exists(.vendorParsed.userId) {
+  .vendorParsed.userId = .vendorParsed.user
+  del(.vendorParsed.user)
+}
+# ipAddress -> srcIp
+if exists(.vendorParsed.ipAddress) && !exists(.vendorParsed.srcIp) {
+  .vendorParsed.srcIp = .vendorParsed.ipAddress
+  del(.vendorParsed.ipAddress)
+}
+# ip -> srcIp (when no srcIp yet); always delete ip alias regardless
+if exists(.vendorParsed.ip) {
+  if !exists(.vendorParsed.srcIp) {
+    .vendorParsed.srcIp = .vendorParsed.ip
+  }
+  del(.vendorParsed.ip)
+}
+# id -> eventId
+if exists(.vendorParsed.id) && !exists(.vendorParsed.eventId) {
+  .vendorParsed.eventId = to_string!(.vendorParsed.id)
+  del(.vendorParsed.id)
+}
+# Drop dash-placeholder values from user-event fields
+if exists(.vendorParsed.userId) {
+  v = to_string(.vendorParsed.userId) ?? ""
+  if v == "-" || v == "" {
+    del(.vendorParsed.userId)
+  }
+}
+if exists(.vendorParsed.sessionId) {
+  v = to_string(.vendorParsed.sessionId) ?? ""
+  if v == "-" || v == "" {
+    del(.vendorParsed.sessionId)
+  }
+}
+if exists(.vendorParsed.clientId) {
+  v = to_string(.vendorParsed.clientId) ?? ""
+  if v == "-" || v == "" {
+    del(.vendorParsed.clientId)
+  }
+}
+if exists(.vendorParsed.srcIp) {
+  v = to_string(.vendorParsed.srcIp) ?? ""
+  if v == "-" || v == "" {
+    del(.vendorParsed.srcIp)
+  }
+}
+if exists(.vendorParsed.eventId) {
+  v = to_string(.vendorParsed.eventId) ?? ""
+  if v == "-" || v == "" {
+    del(.vendorParsed.eventId)
+  }
+}
+}
+
+# ============================================================
+# Inject syslog envelope fields (set in syslog branches; null here)
+# ============================================================
+if syslog_host != null {
+.vendorParsed.syslogHostname = syslog_host
+}
+if syslog_appname != null {
+.vendorParsed.syslogAppname = syslog_appname
+}
+if syslog_procid != null {
+.vendorParsed.syslogProcid = to_string!(syslog_procid)
+}
+if syslog_msgid != null {
+.vendorParsed.syslogMsgid = syslog_msgid
+}
+
+# ============================================================
+# CDS top-level mappings
+# ============================================================
+
+if is_admin_event {
+# eventName: synthesize ADMIN_<resourceType>_<operationType>
+rt = to_string(.vendorParsed.resourceType) ?? ""
+op = to_string(.vendorParsed.operationType) ?? ""
+if rt != "" && op != "" {
+  .eventName = "ADMIN_" + rt + "_" + op
+}
+# logonUser: from authDetails.userId
+if exists(.vendorParsed.authDetails.userId) {
+  .logonUser = [to_string!(.vendorParsed.authDetails.userId)]
+}
+# application: from authDetails.clientId
+if exists(.vendorParsed.authDetails.clientId) {
+  .application = to_string!(.vendorParsed.authDetails.clientId)
+}
+# src: from authDetails.ipAddress
+if exists(.vendorParsed.authDetails.ipAddress) {
+  .src = [to_string!(.vendorParsed.authDetails.ipAddress)]
+}
+} else {
+# eventName: from canonical eventType
+if exists(.vendorParsed.eventType) {
+  .eventName = to_string!(.vendorParsed.eventType)
+}
+# application: from clientId
+if exists(.vendorParsed.clientId) {
+  .application = to_string!(.vendorParsed.clientId)
+}
+# logonUser: prefer details.username first, then userId; deduplicate
+logon_users = []
+if exists(.vendorParsed.details.username) {
+  un = to_string!(.vendorParsed.details.username)
+  if un != "-" && un != "" {
+    logon_users = push(logon_users, un)
+  }
+}
+if exists(.vendorParsed.userId) {
+  uid = to_string!(.vendorParsed.userId)
+  if !includes(logon_users, uid) {
+    logon_users = push(logon_users, uid)
+  }
+}
+if length(logon_users) > 0 {
+  .logonUser = logon_users
+}
+# src: from canonical srcIp
+if exists(.vendorParsed.srcIp) {
+  .src = [to_string!(.vendorParsed.srcIp)]
+}
+# vendorLogId: from canonical eventId (user events only)
+if exists(.vendorParsed.eventId) {
+  .vendorLogId = to_string!(.vendorParsed.eventId)
+}
+}
+
+# ----- shared CDS mappings (both categories) -----
+
+if exists(.vendorParsed.error) {
+err_str = to_string!(.vendorParsed.error)
+if err_str != "-" && err_str != "" {
+  .errorCode = err_str
+} else {
+  del(.vendorParsed.error)
+}
+}
+
+# eventTime: JSON `time` is epoch ms; fall back to syslog timestamp (converted to epoch ms)
+if exists(.vendorParsed.time) {
+.eventTime = to_int!(.vendorParsed.time)
+del(.vendorParsed.time)
+} else if syslog_ts != null {
+# VRL type checker workaround: syslog_ts is `null | timestamp` and `format_timestamp!`
+# requires a `timestamp`. Assigning to a fresh local narrows the type for the checker.
+ts = syslog_ts
+.eventTime = to_int!(format_timestamp!(ts, "%s%3f"))
+}
+
+if exists(.vendorParsed.syslogHostname) {
+.endpointHostName = to_string!(.vendorParsed.syslogHostname)
+}
+
+.

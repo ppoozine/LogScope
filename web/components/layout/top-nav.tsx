@@ -7,7 +7,7 @@ type Tab = { href: string; label: string; disabled?: boolean; comingIn?: string 
 
 const TABS: Tab[] = [
   { href: "/library", label: "Library" },
-  { href: "/analyzer", label: "Analyzer", disabled: true, comingIn: "spec C" },
+  { href: "/analyzer", label: "Analyzer" },
   { href: "/copilot", label: "Copilot", disabled: true, comingIn: "spec D" },
 ];
 

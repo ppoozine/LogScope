@@ -8,7 +8,12 @@ from httpx import AsyncClient
 from app.common.auth import current_user
 from app.modules.auth.models.user import User
 from app.modules.library.models.log_type import LogType
-from app.modules.library.routers.log_type_router import get_log_type_service
+from app.modules.library.routers.log_type_router import (
+    get_field_schema_service,
+    get_log_type_service,
+    get_parse_rule_service,
+    get_sample_log_service,
+)
 
 
 def _user() -> User:
@@ -37,6 +42,43 @@ def _make_log_type() -> LogType:
     lt.created_at = datetime.now(UTC)
     lt.updated_at = datetime.now(UTC)
     return lt
+
+
+class TestLogTypeGet:
+    """Tests for GET /api/v1/library/log_types/{log_type_id}."""
+
+    async def test_returns_log_type_detail(self, app: FastAPI, client: AsyncClient):
+        """Should return LogTypeDetail with fields/current_parse_rule/samples."""
+        # Arrange
+        log_type = _make_log_type()
+        fake_service = AsyncMock()
+        fake_service.get_by_id = AsyncMock(return_value=log_type)
+        fake_field_service = AsyncMock()
+        fake_field_service.list_by_log_type = AsyncMock(return_value=[])
+        fake_parse_service = AsyncMock()
+        fake_parse_service.get_by_id = AsyncMock(return_value=None)
+        fake_sample_service = AsyncMock()
+        fake_sample_service.list_by_log_type = AsyncMock(return_value=[])
+
+        app.dependency_overrides[get_log_type_service] = lambda: fake_service
+        app.dependency_overrides[get_field_schema_service] = lambda: fake_field_service
+        app.dependency_overrides[get_parse_rule_service] = lambda: fake_parse_service
+        app.dependency_overrides[get_sample_log_service] = lambda: fake_sample_service
+        app.dependency_overrides[current_user] = _user
+
+        # Act
+        r = await client.get(f"/api/v1/library/log_types/{log_type.id}")
+
+        # Assert
+        assert r.status_code == 200
+        data = r.json()["data"]
+        assert data["id"] == str(log_type.id)
+        assert "fields" in data
+        assert "current_parse_rule" in data
+        assert "samples" in data
+        assert data["fields"] == []
+        assert data["current_parse_rule"] is None
+        assert data["samples"] == []
 
 
 class TestLogTypeListByProduct:
