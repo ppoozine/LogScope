@@ -1,5 +1,5 @@
 import uuid
-from typing import Annotated
+from typing import Annotated, cast
 
 from fastapi import APIRouter, Depends, status
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,9 +15,13 @@ from app.modules.library.repositories.product_repository import ProductRepositor
 from app.modules.library.repositories.sample_log_repository import SampleLogRepository
 from app.modules.library.schemas import (
     FieldSchemaRead,
+    LogFormat,
+    LogTransport,
     LogTypeCreate,
     LogTypeDetail,
     LogTypeRead,
+    LogTypeSource,
+    LogTypeStatus,
     LogTypeUpdate,
     ParseRuleRead,
     SampleLogRead,
@@ -96,28 +100,24 @@ async def get_log_type(
     fields = await field_schema_service.list_by_log_type(log_type.id)
     samples = await sample_log_service.list_by_log_type(log_type.id)
     current_rule = (
-        await parse_rule_service.get_by_id(log_type.current_parse_rule_id)
-        if log_type.current_parse_rule_id
-        else None
+        await parse_rule_service.get_by_id(log_type.current_parse_rule_id) if log_type.current_parse_rule_id else None
     )
     detail = LogTypeDetail(
         id=log_type.id,
         product_id=log_type.product_id,
         name=log_type.name,
         slug=log_type.slug,
-        format=log_type.format,
-        transport=log_type.transport,
-        status=log_type.status,
-        source=log_type.source,
+        format=cast(LogFormat, log_type.format),
+        transport=cast(LogTransport | None, log_type.transport),
+        status=cast(LogTypeStatus, log_type.status),
+        source=cast(LogTypeSource, log_type.source),
         current_parse_rule_id=log_type.current_parse_rule_id,
         description=log_type.description,
         published_at=log_type.published_at,
         created_at=log_type.created_at,
         updated_at=log_type.updated_at,
         fields=[FieldSchemaRead.model_validate(f) for f in fields],
-        current_parse_rule=(
-            ParseRuleRead.model_validate(current_rule) if current_rule else None
-        ),
+        current_parse_rule=(ParseRuleRead.model_validate(current_rule) if current_rule else None),
         samples=[SampleLogRead.model_validate(s) for s in samples],
     )
     return DataResponse(data=detail)

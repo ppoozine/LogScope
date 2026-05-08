@@ -18,7 +18,7 @@ class TestEngineImports:
     def test_v25_compile_and_remap(self):
         """v0.25 engine should compile a trivial VRL and remap input."""
         # Arrange
-        program = pyvrl_playground_v25.Transform('.action = "allow"\n.')
+        program = pyvrl_playground_v25.Transform('.action = "allow"\n.')  # type: ignore[attr-defined]
 
         # Act
         result = program.remap({"vendorRaw": "ignored"})
@@ -29,7 +29,7 @@ class TestEngineImports:
     def test_v32_compile_and_remap(self):
         """v0.32 engine should compile a trivial VRL and remap input."""
         # Arrange
-        program = pyvrl_playground_v32.Transform('.action = "allow"\n.')
+        program = pyvrl_playground_v32.Transform('.action = "allow"\n.')  # type: ignore[attr-defined]
 
         # Act
         result = program.remap({"vendorRaw": "ignored"})

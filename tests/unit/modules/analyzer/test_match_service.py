@@ -32,7 +32,7 @@ def _make_anthropic_response(json_text: str):
     return msg
 
 
-def _make_service(*, catalog_rows: list[_CatalogRow], anthropic_response, api_key="key"):
+def _make_service(*, catalog_rows: list[_CatalogRow], anthropic_response, api_key: str | None = "key"):
     catalog_repo = MagicMock()
     catalog_repo.fetch_all = AsyncMock(return_value=catalog_rows)
 
