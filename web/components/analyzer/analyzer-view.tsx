@@ -9,10 +9,12 @@ import { MatchBar } from "@/components/analyzer/match-bar";
 import { ResultPane } from "@/components/analyzer/result-pane";
 import { SaveSampleDialog } from "@/components/analyzer/save-sample-dialog";
 import type { CheckCaller } from "@/components/analyzer/vrl-lint";
+import { Button } from "@/components/ui/button";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { useCheck, useMatch, useParse } from "@/lib/api/queries/analyzer";
 import type { components } from "@/lib/api/types";
 import { loadAnalyzerState, saveAnalyzerState } from "@/lib/storage/analyzer-state";
+import { formatVrlSource } from "@/lib/vrl/format";
 
 type EngineVersion = "0.25" | "0.32";
 type FieldSchemaRead = components["schemas"]["FieldSchemaRead"];
@@ -94,6 +96,42 @@ export function AnalyzerView({ preload, noKey }: Props) {
     [checkMutation, engineVersion],
   );
 
+  const handleManualParse = useCallback(() => {
+    if (!vrl.trim() || !logs.trim()) return;
+    parseMutate({
+      vrl_code: vrl,
+      logs: logs.split("\n"),
+      engine_version: engineVersion,
+    });
+  }, [vrl, logs, engineVersion, parseMutate]);
+
+  const handleRunBoth = useCallback(() => {
+    // C1.5-7 will wire this up; placeholder for now
+  }, []);
+
+  const handleFormat = useCallback(() => {
+    setVrl((prev) => formatVrlSource(prev));
+  }, []);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRunBoth();
+        } else {
+          handleManualParse();
+        }
+      } else if (e.shiftKey && (e.key === "F" || e.key === "f")) {
+        e.preventDefault();
+        handleFormat();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [handleManualParse, handleRunBoth, handleFormat]);
+
   const handleApplyCandidate = (c: MatchCandidate) => {
     window.location.href = `/analyzer?log_type_id=${c.log_type_id}`;
   };
@@ -158,6 +196,38 @@ export function AnalyzerView({ preload, noKey }: Props) {
         onMatch={handleManualMatch}
         noKey={noKey}
       />
+      <div className="flex items-center gap-2 border-b bg-muted/40 px-6 py-2">
+        <Button
+          size="sm"
+          onClick={handleManualParse}
+          title="Parse (⌘/Ctrl + Enter)"
+          className="h-7 text-xs"
+        >
+          Parse
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={handleRunBoth}
+          disabled
+          title="Run on both 0.25 and 0.32 — coming next"
+          className="h-7 text-xs"
+        >
+          Run both
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={handleFormat}
+          title="Format VRL (⇧⌘/Ctrl + F)"
+          className="h-7 text-xs"
+        >
+          Format
+        </Button>
+        <span className="ml-auto text-[11px] text-muted-foreground">
+          ⌘+Enter parse · ⇧⌘+F format
+        </span>
+      </div>
       <div className="grid grid-cols-1 gap-4 px-6 pt-4 lg:grid-cols-2">
         <EditorPane
           vrl={vrl}
