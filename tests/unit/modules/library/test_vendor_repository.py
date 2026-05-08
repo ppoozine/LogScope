@@ -65,6 +65,22 @@ class TestVendorRepositoryList:
         assert result == vendors
 
 
+    async def test_list_filters_by_q(self):
+        """list(q='apple') should only return vendors whose name matches."""
+        # Arrange
+        apple = _make_vendor("apple", "Apple Inc")
+        # Mock session 只回 apple（DB 端已過濾）
+        session = make_mock_session_for_list([apple])
+        repo = VendorRepository(session)
+
+        # Act
+        result = await repo.list(q="apple")
+
+        # Assert
+        assert result == [apple]
+        session.execute.assert_awaited_once()
+
+
 class TestVendorRepositoryCreate:
     """Tests for VendorRepository.create()."""
 

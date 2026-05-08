@@ -25,13 +25,25 @@ class LibraryOverviewService:
         *,
         category: str | None = None,
         log_type_status: str | None = None,
+        q: str | None = None,
     ) -> list[OverviewVendorGroup]:
-        """Aggregate vendor → products → log_type counts."""
+        """Aggregate vendor → products → log_type counts.
+
+        `q` does case-insensitive substring match on vendor.name OR product.name.
+        A vendor whose name matches `q` keeps all its products; otherwise only
+        products whose name matches `q` are kept.
+        """
         vendors = await self._vendors.list()
         groups: list[OverviewVendorGroup] = []
 
         for vendor in vendors:
-            products = await self._products.list_by_vendor(vendor.id)
+            vendor_matches_q = q is None or q.lower() in vendor.name.lower()
+            product_q = None if vendor_matches_q else q
+            products = await self._products.list_by_vendor(vendor.id, q=product_q)
+
+            if not vendor_matches_q and not products:
+                continue
+
             overview_products: list[OverviewProduct] = []
 
             for product in products:

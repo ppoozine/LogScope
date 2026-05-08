@@ -40,6 +40,11 @@ async def overview(
     _user: Annotated[User, Depends(current_user)],
     category: Annotated[ProductCategory | None, Query()] = None,
     status_filter: Annotated[str | None, Query(alias="status")] = None,
+    q: Annotated[str | None, Query(min_length=1, max_length=100)] = None,
 ) -> DataResponse[list[OverviewVendorGroup]]:
-    groups = await service.overview(category=category, log_type_status=status_filter)
+    groups = await service.overview(
+        category=category,
+        log_type_status=status_filter,
+        q=q,
+    )
     return DataResponse(data=groups)

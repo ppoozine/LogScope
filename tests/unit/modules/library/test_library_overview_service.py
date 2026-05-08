@@ -46,7 +46,7 @@ def _make_service(*, vendors: list[Vendor], products: dict, log_types: dict):
     vendor_repo.list = AsyncMock(return_value=vendors)
 
     product_repo = MagicMock()
-    product_repo.list_by_vendor = AsyncMock(side_effect=lambda vid: products.get(vid, []))
+    product_repo.list_by_vendor = AsyncMock(side_effect=lambda vid, *, q=None: products.get(vid, []))
 
     log_type_repo = MagicMock()
     log_type_repo.list_by_product = AsyncMock(side_effect=lambda pid: log_types.get(pid, []))
@@ -123,3 +123,70 @@ class TestLibraryOverview:
         # Assert
         assert len(groups[0].products) == 1
         assert groups[0].products[0].slug == "p1"
+
+
+class TestLibraryOverviewQ:
+    """Tests for q substring search."""
+
+    async def test_q_filters_by_product_name(self):
+        """q should keep products whose name contains the substring."""
+        # Arrange
+        vendor = _make_vendor()
+        p1 = _make_product(vendor.id, "p1")
+        p1.name = "Apple"
+        # vendor name doesn't match "Apple", so q gets pushed down to product
+
+        vendor_repo = MagicMock()
+        vendor_repo.list = AsyncMock(return_value=[vendor])
+
+        product_repo = MagicMock()
+
+        async def list_with_q(vid, *, q=None):
+            if q == "Apple":
+                return [p1]
+            return []
+
+        product_repo.list_by_vendor = AsyncMock(side_effect=list_with_q)
+
+        log_type_repo = MagicMock()
+        log_type_repo.list_by_product = AsyncMock(return_value=[])
+
+        service = LibraryOverviewService(vendor_repo, product_repo, log_type_repo)
+
+        # Act
+        groups = await service.overview(q="Apple")
+
+        # Assert
+        assert len(groups) == 1
+        assert len(groups[0].products) == 1
+        assert groups[0].products[0].name == "Apple"
+
+    async def test_q_matches_vendor_name_keeps_all_products(self):
+        """When vendor.name matches q, all its products are kept regardless."""
+        # Arrange
+        vendor = _make_vendor()
+        vendor.name = "Apple Inc"
+        p1 = _make_product(vendor.id, "p1")
+        p2 = _make_product(vendor.id, "p2")
+
+        vendor_repo = MagicMock()
+        vendor_repo.list = AsyncMock(return_value=[vendor])
+
+        product_repo = MagicMock()
+
+        async def list_with_q(vid, *, q=None):
+            assert q is None  # vendor matched, so q should NOT be pushed down
+            return [p1, p2]
+
+        product_repo.list_by_vendor = AsyncMock(side_effect=list_with_q)
+
+        log_type_repo = MagicMock()
+        log_type_repo.list_by_product = AsyncMock(return_value=[])
+
+        service = LibraryOverviewService(vendor_repo, product_repo, log_type_repo)
+
+        # Act
+        groups = await service.overview(q="apple")
+
+        # Assert
+        assert len(groups[0].products) == 2

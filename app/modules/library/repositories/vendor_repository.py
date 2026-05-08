@@ -18,10 +18,18 @@ class VendorRepository:
         result = await self._session.execute(select(Vendor).where(Vendor.slug == slug))
         return result.scalar_one_or_none()
 
-    async def list(self, *, status: str | None = None) -> list[Vendor]:
+    async def list(
+        self,
+        *,
+        status: str | None = None,
+        q: str | None = None,
+    ) -> list[Vendor]:
         stmt = select(Vendor)
         if status is not None:
             stmt = stmt.where(Vendor.status == status)
+        if q:
+            pattern = f"%{q}%"
+            stmt = stmt.where(Vendor.name.ilike(pattern))
         stmt = stmt.order_by(Vendor.name)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
