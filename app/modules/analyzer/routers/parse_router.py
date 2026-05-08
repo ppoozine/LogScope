@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends
 
 from app.common.auth import current_user
 from app.common.schemas import DataResponse
-from app.modules.analyzer.schemas import ParseRequest, ParseResponse
+from app.modules.analyzer.schemas import CheckRequest, CheckResponse, ParseRequest, ParseResponse
 from app.modules.analyzer.services import parser_service
 from app.modules.auth.models.user import User
 
@@ -23,4 +23,13 @@ async def parse(
         logs=body.logs,
         engine=body.engine_version,
     )
+    return DataResponse(data=response)
+
+
+@router.post("/check", response_model=DataResponse[CheckResponse])
+async def check(
+    body: CheckRequest,
+    _user: Annotated[User, Depends(current_user)],
+) -> DataResponse[CheckResponse]:
+    response = parser_service.check(vrl=body.vrl_code, engine=body.engine_version)
     return DataResponse(data=response)

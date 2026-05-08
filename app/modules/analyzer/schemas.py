@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field
 EngineVersion = Literal["0.25", "0.32"]
 ParseResultStatus = Literal["success", "error"]
 ParseKind = Literal["ok", "compile_error", "empty"]
+CheckKind = Literal["ok", "compile_error"]
 
 
 class ParseRequest(BaseModel):
@@ -34,6 +35,17 @@ class ParseResponse(BaseModel):
     compile_error: str | None = None
     summary: ParseSummary | None = None
     results: list[ParseResultItem] = []
+
+
+class CheckRequest(BaseModel):
+    vrl_code: str = Field(min_length=1)
+    engine_version: EngineVersion = "0.32"
+
+
+class CheckResponse(BaseModel):
+    kind: CheckKind
+    engine: EngineVersion
+    compile_error: str | None = None
 
 
 class MatchRequest(BaseModel):

@@ -91,3 +91,23 @@ class TestParserRun:
             # Assert
             assert resp.kind == "ok"
             assert resp.engine == engine
+
+
+class TestParserCheck:
+    """Tests for parser_service.check() — compile-only fast path."""
+
+    def test_returns_ok_for_valid_vrl(self):
+        # Arrange / Act
+        resp = parser_service.check(vrl=".x = 1\n.", engine="0.32")
+
+        # Assert
+        assert resp.kind == "ok"
+        assert resp.compile_error is None
+
+    def test_returns_compile_error_for_invalid_vrl(self):
+        # Arrange / Act
+        resp = parser_service.check(vrl="not vrl at all", engine="0.32")
+
+        # Assert
+        assert resp.kind == "compile_error"
+        assert resp.compile_error is not None

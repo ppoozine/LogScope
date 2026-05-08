@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from app.modules.analyzer.schemas import (
+    CheckResponse,
     EngineVersion,
     ParseResponse,
     ParseResultItem,
@@ -55,3 +56,12 @@ def run(vrl: str, logs: list[str], engine: EngineVersion) -> ParseResponse:
         summary=ParseSummary(total=len(raw_lines), success=success, error=error),
         results=results,
     )
+
+
+def check(vrl: str, engine: EngineVersion) -> CheckResponse:
+    """Compile-only validation. Cheaper than run() — no log iteration."""
+    try:
+        compile_program(vrl, engine)
+    except CompileError as err:
+        return CheckResponse(kind="compile_error", engine=engine, compile_error=str(err))
+    return CheckResponse(kind="ok", engine=engine)
