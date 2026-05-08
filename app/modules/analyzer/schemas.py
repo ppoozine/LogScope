@@ -66,3 +66,18 @@ class MatchCandidate(BaseModel):
 
 class MatchResponse(BaseModel):
     candidates: list[MatchCandidate]
+
+
+class FixtureItem(BaseModel):
+    id: str
+    name: str
+    description: str
+    vrl: str
+    logs: str
+    engine_version: EngineVersion = Field(alias="engine")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class FixtureListResponse(BaseModel):
+    fixtures: list[FixtureItem]

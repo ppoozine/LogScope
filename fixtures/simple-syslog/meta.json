@@ -1,0 +1,5 @@
+{
+  "name": "Simple Syslog（RFC5424）",
+  "description": "標準 RFC5424 framed syslog，parse_syslog() 一行解出 facility / severity / app / msg。",
+  "engine": "0.32"
+}

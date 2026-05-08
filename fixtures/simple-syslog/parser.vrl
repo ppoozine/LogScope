@@ -1,0 +1,6 @@
+# RFC5424 syslog 入口
+parsed, err = parse_syslog(.vendorRaw)
+if err == null {
+  . = parsed
+}
+.

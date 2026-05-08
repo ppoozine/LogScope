@@ -163,3 +163,21 @@ class TestCheckRoute:
 
         # Assert
         assert r.status_code == 401
+
+
+class TestFixturesRoute:
+    """Tests for GET /api/v1/analyzer/fixtures."""
+
+    async def test_lists_bundled_fixtures(self, app: FastAPI, client: AsyncClient):
+        """Should return 200 with bundled fixtures."""
+        # Arrange
+        app.dependency_overrides[current_user] = _user
+
+        # Act
+        r = await client.get("/api/v1/analyzer/fixtures")
+
+        # Assert
+        assert r.status_code == 200
+        body = r.json()["data"]
+        ids = {f["id"] for f in body["fixtures"]}
+        assert "simple-json" in ids

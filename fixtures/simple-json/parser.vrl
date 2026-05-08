@@ -1,0 +1,6 @@
+# 把 raw log 當 JSON parse；失敗就保留原文
+parsed, err = parse_json(.vendorRaw)
+if err == null {
+  . = parsed
+}
+.
