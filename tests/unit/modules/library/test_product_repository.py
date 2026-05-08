@@ -53,7 +53,6 @@ class TestProductRepositoryListByVendor:
         # Assert
         assert result == products
 
-
     async def test_list_by_vendor_filters_by_q(self):
         """list_by_vendor(q='pan') should only return products whose name matches."""
         # Arrange

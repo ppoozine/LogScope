@@ -65,12 +65,7 @@ class ProductService:
 
         Spec §5.4: 詳情頁一次取完。
         """
-        if (
-            self._log_types is None
-            or self._fields is None
-            or self._parse_rules is None
-            or self._samples is None
-        ):
+        if self._log_types is None or self._fields is None or self._parse_rules is None or self._samples is None:
             raise RuntimeError(
                 "get_detail requires all four child repos (log_type/field/parse_rule/sample) to be injected"
             )
@@ -83,9 +78,7 @@ class ProductService:
             fields = await self._fields.list_by_log_type(lt.id)
             samples = await self._samples.list_by_log_type(lt.id)
             current_rule = (
-                await self._parse_rules.get_by_id(lt.current_parse_rule_id)
-                if lt.current_parse_rule_id
-                else None
+                await self._parse_rules.get_by_id(lt.current_parse_rule_id) if lt.current_parse_rule_id else None
             )
 
             log_type_details.append(
@@ -104,11 +97,7 @@ class ProductService:
                     created_at=lt.created_at,
                     updated_at=lt.updated_at,
                     fields=[FieldSchemaRead.model_validate(f) for f in fields],
-                    current_parse_rule=(
-                        ParseRuleRead.model_validate(current_rule)
-                        if current_rule
-                        else None
-                    ),
+                    current_parse_rule=(ParseRuleRead.model_validate(current_rule) if current_rule else None),
                     samples=[SampleLogRead.model_validate(s) for s in samples],
                 )
             )

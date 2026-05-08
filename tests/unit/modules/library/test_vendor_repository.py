@@ -64,7 +64,6 @@ class TestVendorRepositoryList:
         # Assert
         assert result == vendors
 
-
     async def test_list_filters_by_q(self):
         """list(q='apple') should only return vendors whose name matches."""
         # Arrange
