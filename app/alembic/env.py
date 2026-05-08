@@ -10,6 +10,12 @@ from app.core.database import Base
 
 # Import all models so Alembic autogenerate can detect them
 from app.modules.auth.models import user as _user_model  # noqa: F401  # type: ignore[import-not-found]
+from app.modules.library.models import field_schema as _field_schema_model  # noqa: F401
+from app.modules.library.models import log_type as _log_type_model  # noqa: F401
+from app.modules.library.models import parse_rule as _parse_rule_model  # noqa: F401
+from app.modules.library.models import product as _product_model  # noqa: F401
+from app.modules.library.models import sample_log as _sample_log_model  # noqa: F401
+from app.modules.library.models import vendor as _vendor_model  # noqa: F401
 
 config = context.config
 if config.config_file_name is not None:
