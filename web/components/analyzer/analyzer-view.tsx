@@ -9,6 +9,7 @@ import { LogPane } from "@/components/analyzer/log-pane";
 import { MatchBar } from "@/components/analyzer/match-bar";
 import { ResultPane } from "@/components/analyzer/result-pane";
 import { SaveSampleDialog } from "@/components/analyzer/save-sample-dialog";
+import { SnippetsBar } from "@/components/analyzer/snippets-bar";
 import type { CheckCaller } from "@/components/analyzer/vrl-lint";
 import { Button } from "@/components/ui/button";
 import { ApiError, apiFetch } from "@/lib/api/client";
@@ -222,6 +223,14 @@ export function AnalyzerView({ preload, noKey }: Props) {
         onApply={handleApplyCandidate}
         onMatch={handleManualMatch}
         noKey={noKey}
+      />
+      <SnippetsBar
+        current={{ vrl, logs, engineVersion }}
+        onLoad={(state) => {
+          setVrl(state.vrl);
+          setLogs(state.logs);
+          setEngineVersion(state.engineVersion);
+        }}
       />
       <div className="flex items-center gap-2 border-b bg-muted/40 px-6 py-2">
         <Button
