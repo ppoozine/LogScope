@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useDebounce } from "use-debounce";
 
+import { DiffPane } from "@/components/analyzer/diff-pane";
 import { EditorPane } from "@/components/analyzer/editor-pane";
 import { LogPane } from "@/components/analyzer/log-pane";
 import { MatchBar } from "@/components/analyzer/match-bar";
@@ -19,6 +20,7 @@ import { formatVrlSource } from "@/lib/vrl/format";
 type EngineVersion = "0.25" | "0.32";
 type FieldSchemaRead = components["schemas"]["FieldSchemaRead"];
 type MatchCandidate = components["schemas"]["MatchCandidate"];
+type ParseResponse = components["schemas"]["ParseResponse"];
 type SampleLabel = "normal" | "edge_case" | "error";
 
 type Preload = {
@@ -38,6 +40,10 @@ export function AnalyzerView({ preload, noKey }: Props) {
     preload?.engine_version ?? "0.32",
   );
   const [sampleDialogOpen, setSampleDialogOpen] = useState(false);
+  const [diffMode, setDiffMode] = useState(false);
+  const [v25Result, setV25Result] = useState<ParseResponse | null>(null);
+  const [v32Result, setV32Result] = useState<ParseResponse | null>(null);
+  const [diffPending, setDiffPending] = useState(false);
 
   const logTypeId = preload?.log_type_id ?? null;
   const fields = preload?.fields ?? [];
@@ -105,9 +111,30 @@ export function AnalyzerView({ preload, noKey }: Props) {
     });
   }, [vrl, logs, engineVersion, parseMutate]);
 
-  const handleRunBoth = useCallback(() => {
-    // C1.5-7 will wire this up; placeholder for now
-  }, []);
+  const handleRunBoth = useCallback(async () => {
+    if (!vrl.trim() || !logs.trim()) return;
+    setDiffMode(true);
+    setDiffPending(true);
+    setV25Result(null);
+    setV32Result(null);
+    const logLines = logs.split("\n");
+    try {
+      const [r25, r32] = await Promise.all([
+        apiFetch<{ data: ParseResponse }>("/api/v1/analyzer/parse", {
+          method: "POST",
+          body: { vrl_code: vrl, logs: logLines, engine_version: "0.25" },
+        }),
+        apiFetch<{ data: ParseResponse }>("/api/v1/analyzer/parse", {
+          method: "POST",
+          body: { vrl_code: vrl, logs: logLines, engine_version: "0.32" },
+        }),
+      ]);
+      setV25Result(r25.data);
+      setV32Result(r32.data);
+    } finally {
+      setDiffPending(false);
+    }
+  }, [vrl, logs]);
 
   const handleFormat = useCallback(() => {
     setVrl((prev) => formatVrlSource(prev));
@@ -209,11 +236,11 @@ export function AnalyzerView({ preload, noKey }: Props) {
           size="sm"
           variant="outline"
           onClick={handleRunBoth}
-          disabled
-          title="Run on both 0.25 and 0.32 — coming next"
+          disabled={diffPending}
+          title="Run on both 0.25 and 0.32 (⇧⌘/Ctrl + Enter)"
           className="h-7 text-xs"
         >
-          Run both
+          {diffPending ? "Running…" : "Run both"}
         </Button>
         <Button
           size="sm"
@@ -240,13 +267,33 @@ export function AnalyzerView({ preload, noKey }: Props) {
         <LogPane logs={logs} onLogsChange={setLogs} />
       </div>
       <div className="px-6 pb-6 pt-4">
-        <ResultPane
-          parseResult={parseResult}
-          fields={fields}
-          hasLogTypeContext={!!logTypeId}
-          onSaveBackToLibrary={logTypeId ? handleSaveBackToLibrary : undefined}
-          onSaveAsSample={logTypeId ? () => setSampleDialogOpen(true) : undefined}
-        />
+        {diffMode ? (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-end">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => {
+                  setDiffMode(false);
+                  setV25Result(null);
+                  setV32Result(null);
+                }}
+                className="h-7 text-xs"
+              >
+                ← 回 single-engine 結果
+              </Button>
+            </div>
+            <DiffPane v25={v25Result} v32={v32Result} />
+          </div>
+        ) : (
+          <ResultPane
+            parseResult={parseResult ?? null}
+            fields={fields}
+            hasLogTypeContext={!!logTypeId}
+            onSaveBackToLibrary={logTypeId ? handleSaveBackToLibrary : undefined}
+            onSaveAsSample={logTypeId ? () => setSampleDialogOpen(true) : undefined}
+          />
+        )}
       </div>
       <SaveSampleDialog
         open={sampleDialogOpen}
