@@ -24,7 +24,11 @@ type FetchOptions = {
 };
 
 export async function apiFetch<T = unknown>(path: string, opts: FetchOptions = {}): Promise<T> {
-  const url = new URL(`${BASE_URL}${path}`);
+  // When BASE_URL is empty (browser / jsdom), path is relative ("/api/v1/…").
+  // new URL() in Node.js rejects bare relative paths, so we supply a synthetic
+  // base that is stripped back out before the final fetch call.
+  const urlBase = BASE_URL !== "" ? BASE_URL : "http://localhost";
+  const url = new URL(`${BASE_URL}${path}`, urlBase);
   if (opts.searchParams) {
     for (const [k, v] of Object.entries(opts.searchParams)) {
       if (v !== undefined && v !== "") url.searchParams.set(k, v);
