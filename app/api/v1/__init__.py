@@ -1,5 +1,6 @@
 from fastapi import APIRouter
 
+from app.modules.analyzer.routers.match_router import router as analyzer_match_router
 from app.modules.analyzer.routers.parse_router import router as analyzer_parse_router
 from app.modules.auth.routers.auth_router import router as auth_router
 from app.modules.library.routers.field_schema_router import router as field_schema_router
@@ -20,3 +21,4 @@ router.include_router(parse_rule_router, prefix="/library", tags=["library:parse
 router.include_router(field_schema_router, prefix="/library", tags=["library:field"])
 router.include_router(sample_log_router, prefix="/library", tags=["library:sample"])
 router.include_router(analyzer_parse_router, prefix="/analyzer", tags=["analyzer"])
+router.include_router(analyzer_match_router, prefix="/analyzer", tags=["analyzer"])
