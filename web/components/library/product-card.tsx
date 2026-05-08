@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 
+import { CoverageSparkline } from "@/components/library/coverage-sparkline";
+import { useProductCoverage } from "@/lib/api/queries/library-stats";
 import type { components } from "@/lib/api/types";
 import { cn } from "@/lib/utils";
 
@@ -26,7 +30,35 @@ export function ProductCard({ vendorSlug, product }: Props) {
       <p className="text-xs text-muted-foreground">
         {isEmpty ? "—" : `${product.log_type_counts.total} log types`}
       </p>
+      {!isEmpty && <CoverageRow vendorSlug={vendorSlug} productSlug={product.slug} />}
     </Link>
+  );
+}
+
+function CoverageRow({ vendorSlug, productSlug }: { vendorSlug: string; productSlug: string }) {
+  const { data } = useProductCoverage(vendorSlug, productSlug, "7d");
+  if (!data?.enabled) {
+    return (
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>Coverage 7d</span>
+        <span>—</span>
+      </div>
+    );
+  }
+  const first = data.log_types[0];
+  if (!first) {
+    return (
+      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+        <span>Coverage 7d</span>
+        <span>—</span>
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+      <span>Coverage 7d</span>
+      <CoverageSparkline data={first.sparkline} />
+    </div>
   );
 }
 
