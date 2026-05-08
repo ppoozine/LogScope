@@ -128,10 +128,7 @@ export function AnalyzerView({ preload, noKey }: Props) {
     }
   };
 
-  const parseResult = parse.data;
-  const compileError =
-    parseResult?.kind === "compile_error" ? (parseResult.compile_error ?? "compile error") : null;
-  const firstResult = parseResult?.results?.[0] ?? null;
+  const parseResult = parse.data ?? null;
   const parseStatus = parseResult?.summary
     ? {
         ok: parseResult.summary.error === 0,
@@ -149,18 +146,19 @@ export function AnalyzerView({ preload, noKey }: Props) {
         onMatch={handleManualMatch}
         noKey={noKey}
       />
-      <div className="grid grid-cols-1 gap-4 px-6 py-4 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 px-6 pt-4 lg:grid-cols-2">
         <EditorPane
           vrl={vrl}
           onVrlChange={setVrl}
           engineVersion={engineVersion}
           onEngineChange={setEngineVersion}
-          compileError={compileError}
           parseStatus={parseStatus}
         />
         <LogPane logs={logs} onLogsChange={setLogs} />
+      </div>
+      <div className="px-6 pb-6 pt-4">
         <ResultPane
-          result={firstResult}
+          parseResult={parseResult}
           fields={fields}
           hasLogTypeContext={!!logTypeId}
           onSaveBackToLibrary={logTypeId ? handleSaveBackToLibrary : undefined}

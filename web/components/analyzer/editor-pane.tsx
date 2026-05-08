@@ -1,5 +1,6 @@
 "use client";
 
+import { placeholder } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
 
 import { vrlLanguage } from "@/components/analyzer/vrl-syntax";
@@ -12,7 +13,6 @@ type Props = {
   onVrlChange: (next: string) => void;
   engineVersion: EngineVersion;
   onEngineChange: (next: EngineVersion) => void;
-  compileError: string | null;
   parseStatus?: { ok: boolean; errors: number; total: number };
 };
 
@@ -21,7 +21,6 @@ export function EditorPane({
   onVrlChange,
   engineVersion,
   onEngineChange,
-  compileError,
   parseStatus,
 }: Props) {
   return (
@@ -49,7 +48,10 @@ export function EditorPane({
         <CodeMirror
           value={vrl}
           onChange={onVrlChange}
-          extensions={[vrlLanguage]}
+          extensions={[
+            vrlLanguage,
+            placeholder("paste VRL here, end with `.` to return the event"),
+          ]}
           theme="dark"
           basicSetup={{
             lineNumbers: true,
@@ -57,30 +59,21 @@ export function EditorPane({
             foldGutter: false,
             highlightActiveLineGutter: true,
           }}
-          height="400px"
+          height="340px"
         />
       </div>
       <footer className="border-t px-3 py-1.5 text-xs">
-        <ParseFooter compileError={compileError} parseStatus={parseStatus} />
+        <ParseFooter parseStatus={parseStatus} />
       </footer>
     </section>
   );
 }
 
 function ParseFooter({
-  compileError,
   parseStatus,
 }: {
-  compileError: string | null;
   parseStatus: { ok: boolean; errors: number; total: number } | undefined;
 }) {
-  if (compileError) {
-    return (
-      <span className="text-red-600" role="alert">
-        ✗ {compileError}
-      </span>
-    );
-  }
   if (!parseStatus) {
     return <span className="text-muted-foreground">輸入 VRL…</span>;
   }
