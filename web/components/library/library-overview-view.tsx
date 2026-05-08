@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { EmptyState } from "@/components/library/empty-state";
+import { FilterSidebar } from "@/components/library/filter-sidebar";
 import { ProductCard } from "@/components/library/product-card";
 import { VendorGroup } from "@/components/library/vendor-group";
 import { Button } from "@/components/ui/button";
@@ -31,10 +32,9 @@ export function LibraryOverviewView({ initialFilters }: Props) {
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[200px_1fr]">
-      {/* Sidebar placeholder — task 15 fills */}
-      <aside className="hidden rounded-lg border bg-card p-4 lg:block">
-        <p className="text-xs text-muted-foreground">篩選器（Task 15）</p>
-      </aside>
+      <div className="hidden lg:block">
+        <FilterSidebar filters={filters} onChange={setFilters} groups={groups ?? []} />
+      </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-2">
