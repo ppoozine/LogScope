@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.core.cache import init_cache
+from app.core.clickhouse import close_clickhouse, init_clickhouse
 from app.core.config import get_settings
 from app.core.database import init_database
 from app.core.logging import configure_logging
@@ -18,8 +19,10 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     cache = init_cache(settings.redis_url)
     await db.connect()
     await cache.connect()
+    await init_clickhouse()
     try:
         yield
     finally:
+        await close_clickhouse()
         await cache.disconnect()
         await db.disconnect()
