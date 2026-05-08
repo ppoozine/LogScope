@@ -13,12 +13,15 @@ test.describe("Analyzer", () => {
     // Arrange
     await page.goto("/analyzer");
 
-    // Act — type into CodeMirror + textarea. CodeMirror needs trailing
-    // `.` so resolution returns the modified event dict, not the value.
-    const editor = page.locator(".cm-content").first();
-    await editor.click();
+    // Act — type into both CodeMirror editors. There are two .cm-content
+    // elements (VRL first, Raw Log second). VRL needs trailing `.` so
+    // resolution returns the modified event dict, not the value.
+    const vrlEditor = page.locator(".cm-content").nth(0);
+    await vrlEditor.click();
     await page.keyboard.type('.action = "allow"\n.');
-    await page.locator('textarea[placeholder*="500 行"]').fill("anything");
+    const logEditor = page.locator(".cm-content").nth(1);
+    await logEditor.click();
+    await page.keyboard.type("anything");
 
     // Assert — wait for parse summary + grouped result
     await expect(page.getByText(/parse ok/)).toBeVisible({ timeout: 5000 });
