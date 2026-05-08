@@ -85,6 +85,36 @@ class TestParseRoute:
         # Assert
         assert r.status_code == 422
 
+    async def test_parse_schedules_stats_record(self, app: FastAPI, client: AsyncClient):
+        """parse should schedule a StatsRecorder.record BackgroundTask."""
+        from unittest.mock import AsyncMock
+
+        from app.modules.analyzer.routers import parse_router as pr
+
+        app.dependency_overrides[current_user] = _user
+
+        fake_recorder = AsyncMock()
+
+        def _override_recorder():
+            return fake_recorder
+
+        app.dependency_overrides[pr.get_stats_recorder] = _override_recorder
+
+        r = await client.post(
+            "/api/v1/analyzer/parse",
+            json={
+                "vrl_code": '.action = "allow"\n.',
+                "logs": ["one"],
+                "engine_version": "0.32",
+            },
+        )
+        assert r.status_code == 200
+        # Background task runs after response; httpx ASGITransport awaits it.
+        fake_recorder.record.assert_awaited_once()
+        event = fake_recorder.record.await_args.args[0]
+        assert event.engine_version == "0.32"
+        assert event.total == 1 and event.success == 1
+
     async def test_parse_requires_auth(self, app: FastAPI, client: AsyncClient):
         """Should 401 without session."""
         from app.common.auth import get_auth_service
