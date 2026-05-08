@@ -268,6 +268,23 @@ export interface paths {
         patch: operations["update_parse_rule_api_v1_library_parse_rules__rule_id__patch"];
         trace?: never;
     };
+    "/api/v1/library/parse_rules/{rule_id}/promote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Promote Parse Rule */
+        post: operations["promote_parse_rule_api_v1_library_parse_rules__rule_id__promote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/library/log_types/{log_type_id}/fields": {
         parameters: {
             query?: never;
@@ -2157,6 +2174,39 @@ export interface operations {
                 "application/json": components["schemas"]["ParseRuleUpdate"];
             };
         };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_ParseRuleRead_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    promote_parse_rule_api_v1_library_parse_rules__rule_id__promote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                rule_id: string;
+            };
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody?: never;
         responses: {
             /** @description Successful Response */
             200: {
