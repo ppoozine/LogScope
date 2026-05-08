@@ -1,5 +1,8 @@
 // web/lib/api/client.ts
-const BASE_URL = ""; // dev: rewritten to localhost:8000 by next.config; prod: same-origin
+// Browser: relative path, rewritten by next.config rewrites.
+// Server (RSC / Server Actions): Next.js rewrites don't apply, need absolute URL.
+const BASE_URL =
+  typeof window === "undefined" ? (process.env.INTERNAL_API_URL ?? "http://localhost:8000") : "";
 
 export class ApiError extends Error {
   constructor(
@@ -21,15 +24,14 @@ type FetchOptions = {
 };
 
 export async function apiFetch<T = unknown>(path: string, opts: FetchOptions = {}): Promise<T> {
-  const url = new URL(`${BASE_URL}${path}`, "http://placeholder");
+  const url = new URL(`${BASE_URL}${path}`);
   if (opts.searchParams) {
     for (const [k, v] of Object.entries(opts.searchParams)) {
       if (v !== undefined && v !== "") url.searchParams.set(k, v);
     }
   }
-  // For client side, only relative path matters; for server side, callers must
-  // pass an absolute path. We rebuild path from URL parts.
-  const finalUrl = `${url.pathname}${url.search}`;
+  // Browser: relative URL works; server: absolute URL required (BASE_URL is set).
+  const finalUrl = typeof window === "undefined" ? url.toString() : `${url.pathname}${url.search}`;
 
   const headers: Record<string, string> = {};
   if (opts.body !== undefined) headers["Content-Type"] = "application/json";
