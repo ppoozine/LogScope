@@ -165,6 +165,44 @@ class TestCheckRoute:
         assert r.status_code == 401
 
 
+class TestMatchAvailabilityRoute:
+    """Tests for GET /api/v1/analyzer/match-availability."""
+
+    async def test_reports_available_when_settings_have_key(self, app: FastAPI, client: AsyncClient):
+        """Should report available=true when ANTHROPIC_API_KEY is set."""
+        from app.core.config import Settings, get_settings
+
+        # Arrange
+        app.dependency_overrides[current_user] = _user
+        app.dependency_overrides[get_settings] = lambda: Settings.model_construct(
+            anthropic_api_key="sk-test", llm_match_model="m"
+        )
+
+        # Act
+        r = await client.get("/api/v1/analyzer/match-availability")
+
+        # Assert
+        assert r.status_code == 200
+        assert r.json()["data"]["available"] is True
+
+    async def test_reports_unavailable_when_no_key(self, app: FastAPI, client: AsyncClient):
+        """Should report available=false when key missing."""
+        from app.core.config import Settings, get_settings
+
+        # Arrange
+        app.dependency_overrides[current_user] = _user
+        app.dependency_overrides[get_settings] = lambda: Settings.model_construct(
+            anthropic_api_key=None, llm_match_model="m"
+        )
+
+        # Act
+        r = await client.get("/api/v1/analyzer/match-availability")
+
+        # Assert
+        assert r.status_code == 200
+        assert r.json()["data"]["available"] is False
+
+
 class TestFixturesRoute:
     """Tests for GET /api/v1/analyzer/fixtures."""
 

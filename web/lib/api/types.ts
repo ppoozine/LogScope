@@ -371,6 +371,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/analyzer/match-availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Match Availability */
+        get: operations["match_availability_api_v1_analyzer_match_availability_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analyzer/match": {
         parameters: {
             query?: never;
@@ -450,6 +467,10 @@ export interface components {
         /** DataResponse[LogTypeRead] */
         DataResponse_LogTypeRead_: {
             data: components["schemas"]["LogTypeRead"];
+        };
+        /** DataResponse[MatchAvailabilityResponse] */
+        DataResponse_MatchAvailabilityResponse_: {
+            data: components["schemas"]["MatchAvailabilityResponse"];
         };
         /** DataResponse[MatchResponse] */
         DataResponse_MatchResponse_: {
@@ -767,6 +788,11 @@ export interface components {
             email: string;
             /** Password */
             password: string;
+        };
+        /** MatchAvailabilityResponse */
+        MatchAvailabilityResponse: {
+            /** Available */
+            available: boolean;
         };
         /** MatchCandidate */
         MatchCandidate: {
@@ -2263,6 +2289,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DataResponse_CheckResponse_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    match_availability_api_v1_analyzer_match_availability_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_MatchAvailabilityResponse_"];
                 };
             };
             /** @description Validation Error */

@@ -43,6 +43,20 @@ async function loadPreload(
   }
 }
 
+// Frontend can't read the backend's ANTHROPIC_API_KEY (separate process,
+// separate .env). Ask the backend instead.
+async function loadMatchAvailability(session: string): Promise<boolean> {
+  try {
+    const r = await apiFetch<{ data: { available: boolean } }>(
+      "/api/v1/analyzer/match-availability",
+      { cookie: `session=${session}` },
+    );
+    return r.data.available;
+  } catch {
+    return false;
+  }
+}
+
 export default async function AnalyzerPage({
   searchParams,
 }: {
@@ -51,11 +65,11 @@ export default async function AnalyzerPage({
   const sp = await searchParams;
   const cookieStore = await cookies();
   const session = cookieStore.get("session")?.value ?? "";
-  const noKey = !process.env.ANTHROPIC_API_KEY;
 
-  const preload = sp.log_type_id
-    ? await loadPreload(sp.log_type_id, sp.sample_id ?? null, session)
-    : null;
+  const [preload, matchAvailable] = await Promise.all([
+    sp.log_type_id ? loadPreload(sp.log_type_id, sp.sample_id ?? null, session) : null,
+    loadMatchAvailability(session),
+  ]);
 
-  return <AnalyzerView preload={preload} noKey={noKey} />;
+  return <AnalyzerView preload={preload} noKey={!matchAvailable} />;
 }

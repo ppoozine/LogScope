@@ -6,10 +6,12 @@ from fastapi import APIRouter, Depends
 
 from app.common.auth import current_user
 from app.common.schemas import DataResponse
+from app.core.config import Settings, get_settings
 from app.modules.analyzer.schemas import (
     CheckRequest,
     CheckResponse,
     FixtureListResponse,
+    MatchAvailabilityResponse,
     ParseRequest,
     ParseResponse,
 )
@@ -46,3 +48,13 @@ async def check(
 ) -> DataResponse[CheckResponse]:
     response = parser_service.check(vrl=body.vrl_code, engine=body.engine_version)
     return DataResponse(data=response)
+
+
+@router.get("/match-availability", response_model=DataResponse[MatchAvailabilityResponse])
+async def match_availability(
+    settings: Annotated[Settings, Depends(get_settings)],
+    _user: Annotated[User, Depends(current_user)],
+) -> DataResponse[MatchAvailabilityResponse]:
+    return DataResponse(
+        data=MatchAvailabilityResponse(available=bool(settings.anthropic_api_key)),
+    )

@@ -81,3 +81,7 @@ class FixtureItem(BaseModel):
 
 class FixtureListResponse(BaseModel):
     fixtures: list[FixtureItem]
+
+
+class MatchAvailabilityResponse(BaseModel):
+    available: bool
