@@ -320,6 +320,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/library/log_types/{log_type_id}/stats": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Log Type Stats */
+        get: operations["log_type_stats_api_v1_library_log_types__log_type_id__stats_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/library/products/{vendor_slug}/{product_slug}/coverage": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Product Coverage */
+        get: operations["product_coverage_api_v1_library_products__vendor_slug___product_slug__coverage_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/analyzer/parse": {
         parameters: {
             query?: never;
@@ -452,6 +486,20 @@ export interface components {
             /** Compile Error */
             compile_error?: string | null;
         };
+        /** CoverageLogType */
+        CoverageLogType: {
+            /**
+             * Log Type Id
+             * Format: uuid
+             */
+            log_type_id: string;
+            /** Sparkline */
+            sparkline: number[];
+            /** Success Rate Avg */
+            success_rate_avg: number;
+            /** Volume */
+            volume: number;
+        };
         /** DataResponse[CheckResponse] */
         DataResponse_CheckResponse_: {
             data: components["schemas"]["CheckResponse"];
@@ -468,6 +516,10 @@ export interface components {
         DataResponse_LogTypeRead_: {
             data: components["schemas"]["LogTypeRead"];
         };
+        /** DataResponse[LogTypeStats] */
+        DataResponse_LogTypeStats_: {
+            data: components["schemas"]["LogTypeStats"];
+        };
         /** DataResponse[MatchAvailabilityResponse] */
         DataResponse_MatchAvailabilityResponse_: {
             data: components["schemas"]["MatchAvailabilityResponse"];
@@ -483,6 +535,10 @@ export interface components {
         /** DataResponse[ParseRuleRead] */
         DataResponse_ParseRuleRead_: {
             data: components["schemas"]["ParseRuleRead"];
+        };
+        /** DataResponse[ProductCoverage] */
+        DataResponse_ProductCoverage_: {
+            data: components["schemas"]["ProductCoverage"];
         };
         /** DataResponse[ProductDetail] */
         DataResponse_ProductDetail_: {
@@ -545,6 +601,16 @@ export interface components {
         DataResponse_list_VendorRead__: {
             /** Data */
             data: components["schemas"]["VendorRead"][];
+        };
+        /** EngineUsage */
+        EngineUsage: {
+            /**
+             * Engine Version
+             * @enum {string}
+             */
+            engine_version: "0.25" | "0.32";
+            /** Count */
+            count: number;
         };
         /** FieldSchemaBulkReplace */
         FieldSchemaBulkReplace: {
@@ -771,6 +837,18 @@ export interface components {
              */
             updated_at: string;
         };
+        /** LogTypeStats */
+        LogTypeStats: {
+            /** Enabled */
+            enabled: boolean;
+            /** Range Days */
+            range_days: number;
+            /** Timeline */
+            timeline: components["schemas"]["TimelinePoint"][];
+            /** Engine Usage */
+            engine_usage: components["schemas"]["EngineUsage"][];
+            totals: components["schemas"]["StatsTotals"];
+        };
         /** LogTypeUpdate */
         LogTypeUpdate: {
             /** Name */
@@ -960,7 +1038,7 @@ export interface components {
              * Status
              * @enum {string}
              */
-            status: "draft" | "published";
+            status: "draft" | "published" | "archived";
             /** Notes */
             notes: string | null;
             /**
@@ -991,6 +1069,15 @@ export interface components {
             success: number;
             /** Error */
             error: number;
+        };
+        /** ProductCoverage */
+        ProductCoverage: {
+            /** Enabled */
+            enabled: boolean;
+            /** Range Days */
+            range_days: number;
+            /** Log Types */
+            log_types: components["schemas"]["CoverageLogType"][];
         };
         /** ProductCreate */
         ProductCreate: {
@@ -1152,6 +1239,30 @@ export interface components {
              * Format: date-time
              */
             created_at: string;
+        };
+        /** StatsTotals */
+        StatsTotals: {
+            /** Total */
+            total: number;
+            /** Success */
+            success: number;
+            /** Error */
+            error: number;
+            /** Success Rate */
+            success_rate: number;
+        };
+        /** TimelinePoint */
+        TimelinePoint: {
+            /** Day */
+            day: string;
+            /** Total */
+            total: number;
+            /** Success */
+            success: number;
+            /** Error */
+            error: number;
+            /** Success Rate */
+            success_rate: number;
         };
         /** UserRead */
         UserRead: {
@@ -2193,6 +2304,77 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    log_type_stats_api_v1_library_log_types__log_type_id__stats_get: {
+        parameters: {
+            query?: {
+                range?: "7d" | "14d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                log_type_id: string;
+            };
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_LogTypeStats_"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    product_coverage_api_v1_library_products__vendor_slug___product_slug__coverage_get: {
+        parameters: {
+            query?: {
+                range?: "7d" | "14d" | "30d" | "90d";
+            };
+            header?: never;
+            path: {
+                vendor_slug: string;
+                product_slug: string;
+            };
+            cookie?: {
+                session?: string | null;
+            };
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DataResponse_ProductCoverage_"];
+                };
             };
             /** @description Validation Error */
             422: {

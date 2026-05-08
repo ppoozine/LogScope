@@ -17,7 +17,7 @@ LogFormat = Literal["syslog", "json", "cef", "leef", "csv", "other"]
 LogTransport = Literal["syslog_udp", "syslog_tcp", "http", "file", "other"]
 FieldType = Literal["string", "int", "float", "bool", "timestamp", "ip", "object", "array"]
 EngineVersion = Literal["0.25", "0.32"]
-ParseRuleStatus = Literal["draft", "published"]
+ParseRuleStatus = Literal["draft", "published", "archived"]
 SampleLabel = Literal["normal", "edge_case", "error"]
 
 
