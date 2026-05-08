@@ -375,6 +375,10 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** DataResponse[LogTypeDetail] */
+        DataResponse_LogTypeDetail_: {
+            data: components["schemas"]["LogTypeDetail"];
+        };
         /** DataResponse[LogTypeRead] */
         DataResponse_LogTypeRead_: {
             data: components["schemas"]["LogTypeRead"];
@@ -1687,7 +1691,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["DataResponse_LogTypeRead_"];
+                    "application/json": components["schemas"]["DataResponse_LogTypeDetail_"];
                 };
             };
             /** @description Validation Error */
