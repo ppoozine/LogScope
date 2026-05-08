@@ -1,5 +1,4 @@
 import uuid
-from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, String
 from sqlalchemy.dialects.postgresql import UUID
@@ -7,9 +6,6 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from app.common.mixins import TimestampMixin
 from app.core.database import Base
-
-if TYPE_CHECKING:
-    pass
 
 
 class User(Base, TimestampMixin):

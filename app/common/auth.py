@@ -30,7 +30,7 @@ async def get_auth_service(
 
 
 async def current_user(
+    auth: Annotated[AuthService, Depends(get_auth_service)],
     session_cookie: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
-    auth: Annotated[AuthService, Depends(get_auth_service)] = ...,  # type: ignore[assignment]
 ) -> User:
     return await auth.get_current_user_from_session(session_cookie)

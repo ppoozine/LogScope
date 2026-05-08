@@ -36,6 +36,7 @@ async def login(
 async def logout(
     response: Response,
     auth: Annotated[AuthService, Depends(get_auth_service)],
+    settings: Annotated[Settings, Depends(get_settings)],
     session_cookie: Annotated[str | None, Cookie(alias=SESSION_COOKIE_NAME)] = None,
 ) -> DataResponse[dict]:
     if session_cookie:
@@ -44,6 +45,9 @@ async def logout(
         key=SESSION_COOKIE_NAME,
         value="",
         max_age=0,
+        httponly=True,
+        secure=settings.session_cookie_secure,
+        samesite="lax",
         path="/",
     )
     return DataResponse(data={"ok": True})
