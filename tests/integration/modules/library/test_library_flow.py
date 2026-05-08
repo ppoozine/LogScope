@@ -97,6 +97,21 @@ class TestLibraryFlow:
         assert published_lt["status"] == "published"
         assert published_lt["published_at"] is not None
 
+        # Act 6.5: GET nested detail
+        r = await authenticated_client.get(
+            f"/api/v1/library/vendors/{vendor_slug}/products/test-product",
+        )
+        # Assert 6.5
+        assert r.status_code == 200
+        detail = r.json()["data"]
+        assert detail["slug"] == "test-product"
+        assert len(detail["log_types"]) == 1
+        my_lt = detail["log_types"][0]
+        assert my_lt["status"] == "published"
+        assert len(my_lt["fields"]) == 3
+        assert my_lt["current_parse_rule"]["status"] == "published"
+        assert len(my_lt["samples"]) == 0  # sample 還沒加
+
         # Act 7: re-publish should 409
         r = await authenticated_client.post(
             f"/api/v1/library/log_types/{log_type['id']}/publish",
@@ -130,3 +145,34 @@ class TestLibraryFlow:
         assert r.status_code == 204
         r = await authenticated_client.delete(f"/api/v1/library/vendors/{vendor['id']}")
         assert r.status_code == 204
+
+    async def test_cascade_delete_returns_409(self, authenticated_client: AsyncClient):
+        """Deleting vendor with products should return 409, not 500."""
+        # Arrange
+        unique = uuid.uuid4().hex[:8]
+        vendor_slug = f"v409-{unique}"
+
+        r = await authenticated_client.post(
+            "/api/v1/library/vendors",
+            json={"name": f"V409 {unique}", "slug": vendor_slug},
+        )
+        assert r.status_code == 201
+        vendor = r.json()["data"]
+
+        r = await authenticated_client.post(
+            f"/api/v1/library/vendors/{vendor_slug}/products",
+            json={"name": "P", "slug": "p", "category": "network"},
+        )
+        assert r.status_code == 201
+        product = r.json()["data"]
+
+        # Act: try to delete vendor while it has a product
+        r = await authenticated_client.delete(f"/api/v1/library/vendors/{vendor['id']}")
+
+        # Assert
+        assert r.status_code == 409
+        assert r.json()["error"]["code"] == "conflict"
+
+        # Cleanup
+        await authenticated_client.delete(f"/api/v1/library/products/{product['id']}")
+        await authenticated_client.delete(f"/api/v1/library/vendors/{vendor['id']}")
