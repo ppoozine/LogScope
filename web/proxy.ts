@@ -11,16 +11,13 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Note: 我們只用 cookie 是否「存在」做粗篩——存在就放行給後續頁面驗證。
+  // 不用「有 cookie = 已登入」判斷，因為 server-side session 可能失效（redis 重啟）；
+  // 那種情況下 (authed) layout 會 redirect /login，proxy 若再判定 loggedIn 跳 /library 就死循環。
+  // 「已登入訪 /login → /library」的判斷改寫在 /login page 內（會用 getServerUser 真的驗）。
   const session = req.cookies.get("session")?.value;
-  const loggedIn = !!session;
 
-  // 已登入訪問 /login → /library
-  if (loggedIn && pathname === "/login") {
-    return NextResponse.redirect(new URL("/library", req.url));
-  }
-
-  // 未登入訪問非 public 路由 → /login?next=...
-  if (!loggedIn && !PUBLIC_PATHS.has(pathname)) {
+  if (!session && !PUBLIC_PATHS.has(pathname)) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("next", pathname);
     return NextResponse.redirect(loginUrl);
