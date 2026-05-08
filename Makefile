@@ -1,4 +1,4 @@
-.PHONY: setup up down migrate api web web-build web-lint test test-int lint format gen-api
+.PHONY: setup up down migrate api web dev web-build web-lint test test-int lint format gen-api
 
 setup:
 	uv sync
@@ -18,6 +18,17 @@ api:
 
 web:
 	cd web && npm run dev
+
+# Start backend + frontend together (with docker + migration)
+# Logs are prefixed [api] / [web]; Ctrl+C stops both.
+dev: up migrate
+	@echo "==> Backend  http://localhost:8000  (docs: /docs)"
+	@echo "==> Frontend http://localhost:3000"
+	@echo "==> Ctrl+C 一次同時關掉兩邊"
+	@trap 'echo; echo "Stopping..."; kill 0' INT TERM; \
+	  uv run uvicorn app.main:app --reload --port 8000 2>&1 | sed -u 's/^/[api] /' & \
+	  (cd web && npm run dev) 2>&1 | sed -u 's/^/[web] /' & \
+	  wait
 
 web-build:
 	cd web && npm run build
