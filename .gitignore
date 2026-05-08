@@ -10,3 +10,9 @@ __pycache__/
 web/node_modules/
 web/.next/
 .runtime/
+
+# Rust build artifacts
+target/
+engine/*/target/
+*.rs.bk
+Cargo.lock.bak

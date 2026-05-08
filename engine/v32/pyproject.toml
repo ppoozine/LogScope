@@ -1,0 +1,14 @@
+[build-system]
+requires = ["maturin>=1.5,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "pyvrl-playground-v32"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+description = "VRL 0.32 engine for pyvrl-playground"
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+manifest-path = "Cargo.toml"
+module-name = "pyvrl_playground_v32"

@@ -7,7 +7,7 @@
         test test-int test-fe test-fe-e2e \
         lint lint-fe fmt typecheck typecheck-fe \
         up down migrate revision \
-        gen-api
+        gen-api build-engines
 
 LOG_DIR := .runtime/logs
 
@@ -249,6 +249,13 @@ migrate:
 revision:
 	@read -p "Message: " msg; \
 	uv run alembic revision -m "$$msg"
+
+# ──────────────────────────────────────────────
+# VRL engines (Rust + maturin)
+# ──────────────────────────────────────────────
+build-engines:
+	cd engine/v25 && uv run maturin develop --release
+	cd engine/v32 && uv run maturin develop --release
 
 # ──────────────────────────────────────────────
 # Misc
