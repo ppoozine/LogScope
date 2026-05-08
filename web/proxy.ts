@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const PUBLIC_PATHS = new Set(["/login"]);
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // 跳過 API rewrites、static、Next 內部資源
