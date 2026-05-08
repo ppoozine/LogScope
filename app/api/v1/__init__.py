@@ -9,6 +9,7 @@ from app.modules.library.routers.log_type_router import router as log_type_route
 from app.modules.library.routers.parse_rule_router import router as parse_rule_router
 from app.modules.library.routers.product_router import router as product_router
 from app.modules.library.routers.sample_log_router import router as sample_log_router
+from app.modules.library.routers.stats_router import router as library_stats_router
 from app.modules.library.routers.vendor_router import router as vendor_router
 
 router = APIRouter(prefix="/api/v1")
@@ -20,5 +21,6 @@ router.include_router(log_type_router, prefix="/library", tags=["library:log_typ
 router.include_router(parse_rule_router, prefix="/library", tags=["library:parse_rule"])
 router.include_router(field_schema_router, prefix="/library", tags=["library:field"])
 router.include_router(sample_log_router, prefix="/library", tags=["library:sample"])
+router.include_router(library_stats_router, prefix="/library", tags=["library:stats"])
 router.include_router(analyzer_parse_router, prefix="/analyzer", tags=["analyzer"])
 router.include_router(analyzer_match_router, prefix="/analyzer", tags=["analyzer"])
