@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { EditorPane } from "@/components/analyzer/editor-pane";
@@ -8,8 +8,9 @@ import { LogPane } from "@/components/analyzer/log-pane";
 import { MatchBar } from "@/components/analyzer/match-bar";
 import { ResultPane } from "@/components/analyzer/result-pane";
 import { SaveSampleDialog } from "@/components/analyzer/save-sample-dialog";
+import type { CheckCaller } from "@/components/analyzer/vrl-lint";
 import { ApiError, apiFetch } from "@/lib/api/client";
-import { useMatch, useParse } from "@/lib/api/queries/analyzer";
+import { useCheck, useMatch, useParse } from "@/lib/api/queries/analyzer";
 import type { components } from "@/lib/api/types";
 import { loadAnalyzerState, saveAnalyzerState } from "@/lib/storage/analyzer-state";
 
@@ -41,6 +42,7 @@ export function AnalyzerView({ preload, noKey }: Props) {
 
   const parse = useParse();
   const match = useMatch();
+  const checkMutation = useCheck();
 
   // Hydrate from localStorage on mount, unless preload supplied data
   useEffect(() => {
@@ -81,6 +83,16 @@ export function AnalyzerView({ preload, noKey }: Props) {
     if (!debouncedFirstLog.trim()) return;
     matchMutate({ raw_log: debouncedFirstLog, top_k: 3 });
   }, [debouncedFirstLog, noKey, matchMutate]);
+
+  const handleCheck = useCallback<CheckCaller>(
+    async (vrlSource) => {
+      return await checkMutation.mutateAsync({
+        vrl_code: vrlSource,
+        engine_version: engineVersion,
+      });
+    },
+    [checkMutation, engineVersion],
+  );
 
   const handleApplyCandidate = (c: MatchCandidate) => {
     window.location.href = `/analyzer?log_type_id=${c.log_type_id}`;
@@ -153,6 +165,7 @@ export function AnalyzerView({ preload, noKey }: Props) {
           engineVersion={engineVersion}
           onEngineChange={setEngineVersion}
           parseStatus={parseStatus}
+          onCheck={handleCheck}
         />
         <LogPane logs={logs} onLogsChange={setLogs} />
       </div>

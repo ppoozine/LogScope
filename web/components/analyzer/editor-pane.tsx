@@ -2,7 +2,9 @@
 
 import { placeholder } from "@codemirror/view";
 import CodeMirror from "@uiw/react-codemirror";
+import { useMemo } from "react";
 
+import { type CheckCaller, makeVrlLinter } from "@/components/analyzer/vrl-lint";
 import { vrlLanguage } from "@/components/analyzer/vrl-syntax";
 import { Label } from "@/components/ui/label";
 
@@ -14,6 +16,7 @@ type Props = {
   engineVersion: EngineVersion;
   onEngineChange: (next: EngineVersion) => void;
   parseStatus?: { ok: boolean; errors: number; total: number };
+  onCheck?: CheckCaller;
 };
 
 export function EditorPane({
@@ -22,7 +25,14 @@ export function EditorPane({
   engineVersion,
   onEngineChange,
   parseStatus,
+  onCheck,
 }: Props) {
+  const extensions = useMemo(() => {
+    const exts = [vrlLanguage, placeholder("paste VRL here, end with `.` to return the event")];
+    if (onCheck) exts.push(makeVrlLinter(onCheck));
+    return exts;
+  }, [onCheck]);
+
   return (
     <section className="flex flex-col gap-2 rounded-lg border bg-card">
       <header className="flex items-center justify-between border-b px-3 py-2">
@@ -48,10 +58,7 @@ export function EditorPane({
         <CodeMirror
           value={vrl}
           onChange={onVrlChange}
-          extensions={[
-            vrlLanguage,
-            placeholder("paste VRL here, end with `.` to return the event"),
-          ]}
+          extensions={extensions}
           theme="dark"
           basicSetup={{
             lineNumbers: true,
