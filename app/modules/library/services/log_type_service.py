@@ -1,5 +1,4 @@
 import uuid
-from datetime import UTC, datetime
 
 from app.common.exceptions import (
     ConflictError,
@@ -12,6 +11,7 @@ from app.modules.library.repositories.log_type_repository import LogTypeReposito
 from app.modules.library.repositories.parse_rule_repository import ParseRuleRepository
 from app.modules.library.repositories.product_repository import ProductRepository
 from app.modules.library.schemas import LogTypeCreate, LogTypeUpdate
+from app.modules.library.services.parse_rule_service import ParseRuleService
 
 
 class LogTypeService:
@@ -74,20 +74,20 @@ class LogTypeService:
         await self._log_types.delete(log_type)
 
     async def publish(self, log_type_id: uuid.UUID) -> LogType:
-        """Publish flow: promote current draft parse rule to published."""
+        """Promote current draft parse rule to published.
+
+        Delegates to ParseRuleService.promote() so all promotion paths share
+        the same archive-and-publish semantics required by the partial unique.
+        """
         log_type = await self.get_by_id(log_type_id)
         if log_type.current_parse_rule_id is None:
             raise ValidationError("no parse rule to publish")
 
-        rule = await self._parse_rules.get_by_id(log_type.current_parse_rule_id)
-        if rule is None:
-            raise ValidationError("no parse rule to publish")
-        if rule.status == "published":
-            raise ConflictError("already published")
+        parse_rule_service = ParseRuleService(self._parse_rules, self._log_types)
+        await parse_rule_service.promote(log_type.current_parse_rule_id)
 
-        rule.status = "published"
-        await self._parse_rules.update(rule)
-
-        log_type.status = "published"
-        log_type.published_at = datetime.now(UTC)
-        return await self._log_types.update(log_type)
+        # promote() already updated log_type via repo, but the in-memory copy here
+        # could be stale; re-fetch to return fresh state.
+        refreshed = await self._log_types.get_by_id(log_type_id)
+        assert refreshed is not None
+        return refreshed
