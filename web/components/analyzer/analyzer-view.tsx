@@ -13,12 +13,13 @@ import { SnippetsBar } from "@/components/analyzer/snippets-bar";
 import type { CheckCaller } from "@/components/analyzer/vrl-lint";
 import { Button } from "@/components/ui/button";
 import { ApiError, apiFetch } from "@/lib/api/client";
-import { useCheck, useMatch, useParse } from "@/lib/api/queries/analyzer";
+import { useMatch, useParse } from "@/lib/api/queries/analyzer";
 import type { components } from "@/lib/api/types";
 import { loadAnalyzerState, saveAnalyzerState } from "@/lib/storage/analyzer-state";
 import { formatVrlSource } from "@/lib/vrl/format";
 
 type EngineVersion = "0.25" | "0.32";
+type CheckResponse = components["schemas"]["CheckResponse"];
 type FieldSchemaRead = components["schemas"]["FieldSchemaRead"];
 type MatchCandidate = components["schemas"]["MatchCandidate"];
 type ParseResponse = components["schemas"]["ParseResponse"];
@@ -51,7 +52,6 @@ export function AnalyzerView({ preload, noKey }: Props) {
 
   const parse = useParse();
   const match = useMatch();
-  const checkMutation = useCheck();
 
   // Hydrate from localStorage on mount, unless preload supplied data
   useEffect(() => {
@@ -93,14 +93,23 @@ export function AnalyzerView({ preload, noKey }: Props) {
     matchMutate({ raw_log: debouncedFirstLog, top_k: 3 });
   }, [debouncedFirstLog, noKey, matchMutate]);
 
+  // Fire-and-forget /check call. We swallow network errors here (instead of
+  // letting React Query bubble them through the dev overlay) — the linter
+  // doesn't need the failure surfaced; an offline/blocked /check just means
+  // no inline diagnostics this tick.
   const handleCheck = useCallback<CheckCaller>(
     async (vrlSource) => {
-      return await checkMutation.mutateAsync({
-        vrl_code: vrlSource,
-        engine_version: engineVersion,
-      });
+      try {
+        const r = await apiFetch<{ data: CheckResponse }>("/api/v1/analyzer/check", {
+          method: "POST",
+          body: { vrl_code: vrlSource, engine_version: engineVersion },
+        });
+        return r.data;
+      } catch {
+        return { kind: "ok", engine: engineVersion, compile_error: null };
+      }
     },
-    [checkMutation, engineVersion],
+    [engineVersion],
   );
 
   const handleManualParse = useCallback(() => {
