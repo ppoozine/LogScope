@@ -87,6 +87,8 @@ function vrlToken(stream: StreamStreamLike): string | null {
     return "number";
   }
 
+  // Consume unrecognized character so the stream always advances.
+  stream.next();
   return null;
 }
 
