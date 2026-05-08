@@ -1,0 +1,8 @@
+{
+  "include": ["app", "tests"],
+  "exclude": ["**/__pycache__", ".venv", "app/alembic/versions"],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "standard",
+  "reportMissingImports": "error",
+  "reportMissingTypeStubs": false
+}
