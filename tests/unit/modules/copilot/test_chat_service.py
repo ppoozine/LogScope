@@ -236,3 +236,16 @@ class TestModelDispatch:
         assert s._model_for("vrl_generate") == "claude-sonnet-4-6"
         # Other skills 仍走 default
         assert s._model_for("log_explain") == "claude-haiku-4-5"
+
+    def test_vrl_optimize_shares_vrl_model_override(self):
+        """vrl_optimize routes to LLM_COPILOT_VRL_MODEL when set, same as vrl_generate."""
+        s = self._make_service(skill_models={
+            "vrl_generate": "claude-sonnet-4-6",
+            "vrl_optimize": "claude-sonnet-4-6",
+        })
+        assert s._model_for("vrl_optimize") == "claude-sonnet-4-6"
+        assert s._model_for("vrl_generate") == "claude-sonnet-4-6"
+        # anomaly stays on default
+        assert s._model_for("anomaly") == "claude-haiku-4-5"
+        # log_explain stays on default
+        assert s._model_for("log_explain") == "claude-haiku-4-5"
