@@ -152,14 +152,16 @@ class TestRenderPageContextXml:
         xml_str = _render_page_context_xml(
             self._ctx(
                 parse_results=[
-                    {"index": 1, "status": "ok"},
-                    {"index": 2, "status": "error", "message": 'field "x" missing'},
+                    {"index": 0, "status": "ok"},
+                    {"index": 1, "status": "error", "message": 'field "x" missing'},
                 ]
             ),
             max_log_lines=20,
             max_vrl_chars=4000,
         )
 
+        # Backend ParseResultItem.index is 0-based; renderer adds +1 so the
+        # number lines up with <log index="N"> rendering above.
         assert '<result index="1" status="ok"/>' in xml_str
         # Naive interpolation would break the XML. We assert by *parsing* the
         # rendered output: a valid XML parse proves the `"` was correctly
@@ -168,7 +170,10 @@ class TestRenderPageContextXml:
         root = ET.fromstring(xml_str)
         results = root.findall(".//result")
         assert len(results) == 2
+        ok_one = results[0]
         err = results[1]
+        assert ok_one.get("index") == "1"
+        assert err.get("index") == "2"
         assert err.get("status") == "error"
         assert err.get("message") == 'field "x" missing'
 

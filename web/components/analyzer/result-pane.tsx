@@ -2,8 +2,10 @@
 
 import { useMemo, useRef, useState } from "react";
 
+import { useCopilot } from "@/components/providers/copilot-context";
 import { Button } from "@/components/ui/button";
 import type { components } from "@/lib/api/types";
+import { useStreamingChat } from "@/lib/copilot/hooks/use-streaming-chat";
 import { cn } from "@/lib/utils";
 
 type ParseResponse = components["schemas"]["ParseResponse"];
@@ -201,12 +203,40 @@ function ResultCard({
       </summary>
       <div className="border-t bg-zinc-50 px-3 py-2">
         {isError ? (
-          <pre className="whitespace-pre-wrap text-[11px] text-red-700">{result.error}</pre>
+          <div className="space-y-2">
+            <pre className="whitespace-pre-wrap text-[11px] text-red-700">{result.error}</pre>
+            <AskCopilotChip index={result.index} input={result.input} error={result.error ?? ""} />
+          </div>
         ) : (
           <GroupedFields output={result.output ?? {}} fields={fields} />
         )}
       </div>
     </details>
+  );
+}
+
+function AskCopilotChip({ index, input, error }: { index: number; input: string; error: string }) {
+  const { open } = useCopilot();
+  const { send } = useStreamingChat();
+  const handle = () => {
+    open();
+    // index is 0-based in ParseResultItem; add 1 to match user-facing 1-based
+    // numbering (and the <log index="N"> rendering in page_context).
+    const oneBased = index + 1;
+    const inputSnippet = input.length > 120 ? `${input.slice(0, 120)}…` : input;
+    void send(
+      `<logs> 第 ${oneBased} 筆 parse 失敗（input: \`${inputSnippet}\`、error: \`${error}\`）。請對照 <current_vrl> 與 <parse_results> 給修正方案，輸出 \`\`\`vrl ... \`\`\` 區塊並列「改了什麼」。`,
+      { skill: "vrl_generate" },
+    );
+  };
+  return (
+    <button
+      type="button"
+      onClick={handle}
+      className="inline-flex items-center gap-1 rounded border border-purple-300 bg-purple-50 px-2 py-1 text-[11px] text-purple-800 hover:bg-purple-100"
+    >
+      ✦ 問 Copilot 怎麼修
+    </button>
   );
 }
 

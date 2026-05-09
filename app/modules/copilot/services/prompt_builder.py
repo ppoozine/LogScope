@@ -271,7 +271,9 @@ def _render_page_context_xml(
         lines.append(f"    <![CDATA[{safe_vrl}]]>")
         lines.append("  </current_vrl>")
 
-    # parse_results
+    # parse_results — render 1-based index to match <log index="1"> rendering
+    # above (backend ParseResultItem.index is 0-based; LLM cannot otherwise
+    # cross-reference a failing parse_result back to its log line).
     if ctx.parse_results:
         lines.append("  <parse_results>")
         for r in ctx.parse_results:
@@ -280,7 +282,7 @@ def _render_page_context_xml(
             else:
                 msg_attr = ""
             lines.append(
-                f'    <result index="{r.index}" status="{r.status}"{msg_attr}/>'
+                f'    <result index="{r.index + 1}" status="{r.status}"{msg_attr}/>'
             )
         lines.append("  </parse_results>")
 

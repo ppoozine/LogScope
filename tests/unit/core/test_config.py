@@ -44,22 +44,38 @@ def test_copilot_settings_defaults(monkeypatch):
 
 
 def test_copilot_d2_settings_defaults(monkeypatch):
-    """D2 settings should default sensibly when env not set."""
+    """D2 settings should default sensibly when env not set.
+
+    Use ``_env_file=None`` so the test is independent of whatever the
+    developer has in their local ``.env`` (which legitimately contains
+    overrides like LLM_COPILOT_VRL_MODEL=claude-sonnet-4-6 for testing).
+    """
     for k in [
         "LLM_COPILOT_VRL_MODEL",
         "LLM_COPILOT_MAX_LIBRARY_PRODUCTS_IN_CONTEXT",
     ]:
         monkeypatch.delenv(k, raising=False)
+    # Required fields still need values when bypassing .env:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://t:t@localhost:5432/t")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_EMAIL", "a@b.c")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_PASSWORD", "x")
 
     from app.core.config import Settings
 
-    s = Settings()  # type: ignore[call-arg]
+    s = Settings(_env_file=None)  # type: ignore[call-arg]
     assert s.llm_copilot_vrl_model is None
     assert s.llm_copilot_max_library_products_in_context == 20
 
 
 def test_copilot_d2_vrl_model_override(monkeypatch):
     monkeypatch.setenv("LLM_COPILOT_VRL_MODEL", "claude-sonnet-4-6")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://t:t@localhost:5432/t")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_EMAIL", "a@b.c")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_PASSWORD", "x")
+
     from app.core.config import Settings
-    s = Settings()  # type: ignore[call-arg]
+
+    s = Settings(_env_file=None)  # type: ignore[call-arg]
     assert s.llm_copilot_vrl_model == "claude-sonnet-4-6"
