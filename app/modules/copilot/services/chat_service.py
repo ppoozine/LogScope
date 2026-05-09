@@ -13,8 +13,11 @@ from app.modules.copilot.constants import (
     SSE_EVENT_ERROR,
     SSE_EVENT_TEXT_DELTA,
 )
-from app.modules.copilot.schemas import ChatRequest
-from app.modules.copilot.services.prompt_builder import build_system_blocks
+from app.modules.copilot.schemas import ChatRequest, InlineVrlRequest
+from app.modules.copilot.services.prompt_builder import (
+    build_inline_system_blocks,
+    build_system_blocks,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -83,6 +86,49 @@ class ChatService:
                     yield self._sse(SSE_EVENT_TEXT_DELTA, {"text": text})
         except Exception:
             logger.exception("anthropic_stream_failed")
+            yield self._sse(
+                SSE_EVENT_ERROR,
+                {
+                    "code": ERROR_ANTHROPIC_FAILED,
+                    "message": "Copilot 暫時無法回應，請稍後再試",
+                },
+            )
+        finally:
+            yield self._sse(SSE_EVENT_DONE, {})
+
+    async def stream_inline(
+        self, *, request: InlineVrlRequest
+    ) -> AsyncIterator[bytes]:
+        """Stream Anthropic completion for inline VRL editor (⌘K)."""
+        if not self._api_key:
+            yield self._sse(
+                SSE_EVENT_ERROR,
+                {
+                    "code": ERROR_NO_API_KEY,
+                    "message": "Copilot 未啟用：尚未設定 ANTHROPIC_API_KEY",
+                },
+            )
+            yield self._sse(SSE_EVENT_DONE, {})
+            return
+
+        system_blocks = build_inline_system_blocks(
+            request,
+            max_log_lines=self._max_log_lines,
+            max_vrl_chars=self._max_vrl_chars,
+        )
+        anthropic_messages = [{"role": "user", "content": request.instruction}]
+
+        try:
+            async with self._client.messages.stream(
+                model=self._model_for("vrl_inline"),
+                max_tokens=1024,
+                system=system_blocks,
+                messages=anthropic_messages,
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield self._sse(SSE_EVENT_TEXT_DELTA, {"text": text})
+        except Exception:
+            logger.exception("anthropic_inline_failed")
             yield self._sse(
                 SSE_EVENT_ERROR,
                 {
