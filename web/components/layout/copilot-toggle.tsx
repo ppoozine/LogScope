@@ -1,10 +1,25 @@
 "use client";
 
+import { useEffect } from "react";
+
 import { useCopilot } from "@/components/providers/copilot-context";
 import { cn } from "@/lib/utils";
 
 export function CopilotToggle() {
   const { isOpen, toggle } = useCopilot();
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      // ⌘\ on macOS, Ctrl+\ elsewhere
+      if (e.key === "\\" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        toggle();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [toggle]);
+
   return (
     <button
       type="button"
