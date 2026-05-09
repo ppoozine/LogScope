@@ -4,6 +4,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+SkillName = Literal["log_explain", "vrl_generate"]
+
 
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -34,5 +36,5 @@ class PageContext(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=40)
-    skill: Literal["log_explain"] | None = None
+    skill: SkillName | None = None
     page_context: PageContext | None = None

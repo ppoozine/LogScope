@@ -51,12 +51,21 @@ class TestChatRequest:
         )
         assert r.skill == "log_explain"
 
+    def test_skill_vrl_generate_accepted(self):
+        r = ChatRequest.model_validate(
+            {
+                "messages": [{"role": "user", "content": "hi"}],
+                "skill": "vrl_generate",
+            }
+        )
+        assert r.skill == "vrl_generate"
+
     def test_invalid_skill_rejected(self):
         with pytest.raises(ValidationError):
             ChatRequest.model_validate(
                 {
                     "messages": [{"role": "user", "content": "hi"}],
-                    "skill": "vrl_gen",  # D1 only supports log_explain
+                    "skill": "not_a_real_skill",
                 }
             )
 
