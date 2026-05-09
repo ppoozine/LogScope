@@ -557,3 +557,99 @@ class TestLibraryProductXml:
         field_el = root.find(".//field")
         assert field_el is not None
         assert field_el.get("name") == 'field "x"'
+
+
+class TestLibraryVersionsXml:
+    def _ctx(self, diff=None):
+        from app.modules.copilot.schemas import LibraryVersionsPageContext
+        return LibraryVersionsPageContext(
+            page="library_versions",
+            vendor_slug="paloalto",
+            product_slug="pan-os",
+            log_type_name="traffic",
+            diff=diff,
+        )
+
+    def test_no_diff(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        xml = _render_library_versions_xml(self._ctx(), max_vrl_chars=4000)
+        assert '<page_context page="library_versions">' in xml
+        assert "<vendor_slug>paloalto</vendor_slug>" in xml
+        assert "<product_slug>pan-os</product_slug>" in xml
+        assert "<log_type_name>traffic</log_type_name>" in xml
+        # diff element entirely omitted when None
+        assert "<diff" not in xml
+
+    def test_with_diff(self):
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version="v3", head_version="v4",
+            base_vrl="old vrl content",
+            head_vrl="new vrl content",
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        assert 'base_version="v3"' in xml
+        assert 'head_version="v4"' in xml
+        assert "<base_vrl>" in xml
+        assert "<head_vrl>" in xml
+        assert "old vrl content" in xml
+        assert "new vrl content" in xml
+
+    def test_diff_with_only_head_vrl(self):
+        """base_vrl=None should omit only the base_vrl element, head_vrl still rendered."""
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version="v3", head_version="v4",
+            base_vrl=None,
+            head_vrl="new only",
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        assert "<base_vrl" not in xml
+        assert "<head_vrl>" in xml
+        assert "new only" in xml
+
+    def test_vrl_truncated(self):
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        long = "y" * 8000
+        diff = VersionDiffContext(
+            base_version="v1", head_version="v2",
+            base_vrl=long, head_vrl="short",
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=200)
+        # base_vrl truncated; head_vrl not
+        assert '<base_vrl truncated_to="200">' in xml
+        assert "y" * 200 in xml
+        assert "y" * 400 not in xml
+        # head_vrl renders without truncated_to attribute
+        assert "<head_vrl>" in xml
+
+    def test_vrl_with_cdata_terminator_escaped(self):
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version="v1", head_version="v2",
+            base_vrl='. = parse_json(.) ?? "]]>"',
+            head_vrl=None,
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        assert "]]]]><![CDATA[>" in xml
+        assert xml.count("<![CDATA[") == xml.count("]]>")
+
+    def test_diff_attributes_use_quoteattr(self):
+        """Version strings with quotes shouldn't break XML."""
+        import xml.etree.ElementTree as ET
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version='v"1', head_version='v"2',
+            base_vrl=None, head_vrl=None,
+        )
+        xml_str = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        root = ET.fromstring(xml_str)
+        diff_el = root.find(".//diff")
+        assert diff_el is not None
+        assert diff_el.get("base_version") == 'v"1'
+        assert diff_el.get("head_version") == 'v"2'

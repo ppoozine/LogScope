@@ -365,8 +365,35 @@ def _render_library_product_xml(ctx, *, max_vrl_chars: int) -> str:
 
 
 def _render_library_versions_xml(ctx, *, max_vrl_chars: int) -> str:
-    """Stub: T20 will fill in the real implementation."""
-    return '<page_context page="library_versions"><facts/></page_context>'
+    """Render LibraryVersionsPageContext as XML."""
+    lines = ['<page_context page="library_versions">']
+    lines.append("  <facts>")
+    lines.append(f"    <vendor_slug>{ctx.vendor_slug}</vendor_slug>")
+    lines.append(f"    <product_slug>{ctx.product_slug}</product_slug>")
+    lines.append(f"    <log_type_name>{ctx.log_type_name}</log_type_name>")
+    lines.append("  </facts>")
+
+    if ctx.diff is not None:
+        d = ctx.diff
+        lines.append(
+            f"  <diff base_version={quoteattr(d.base_version)} "
+            f"head_version={quoteattr(d.head_version)}>"
+        )
+        for label, body in (("base_vrl", d.base_vrl), ("head_vrl", d.head_vrl)):
+            if body is None:
+                continue
+            if len(body) > max_vrl_chars:
+                attr = f' truncated_to="{max_vrl_chars}"'
+                body = body[:max_vrl_chars]
+            else:
+                attr = ""
+            lines.append(f"    <{label}{attr}>")
+            lines.append(f"      <![CDATA[{_safe_cdata(body)}]]>")
+            lines.append(f"    </{label}>")
+        lines.append("  </diff>")
+
+    lines.append("</page_context>")
+    return "\n".join(lines)
 
 
 def _render_page_context_xml(
