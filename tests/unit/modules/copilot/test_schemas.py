@@ -6,6 +6,7 @@ from pydantic import ValidationError
 from app.modules.copilot.schemas import (
     ChatMessage,
     ChatRequest,
+    InlineVrlRequest,
 )
 
 
@@ -207,4 +208,117 @@ class TestDiscriminatedPageContext:
             ChatRequest(
                 messages=[{"role": "user", "content": "hi"}],
                 page_context={"page": "library"},  # not in 4 literals
+            )
+
+
+class TestInlineVrlRequest:
+    def test_insert_mode_valid(self):
+        r = InlineVrlRequest(
+            instruction="加 dst_ip",
+            mode="insert",
+            current_vrl=". = parse_syslog!(.message)",
+            cursor_offset=10,
+            vrl_engine="0.32",
+            logs=["log1"],
+        )
+        assert r.mode == "insert"
+        assert r.cursor_offset == 10
+
+    def test_insert_mode_missing_cursor_offset(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                mode="insert",
+                current_vrl="abc",
+                # cursor_offset omitted
+            )
+
+    def test_insert_mode_cursor_offset_out_of_range(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                mode="insert",
+                current_vrl="abc",        # length 3
+                cursor_offset=99,
+            )
+
+    def test_replace_mode_valid(self):
+        r = InlineVrlRequest(
+            instruction="改用 parse_regex",
+            mode="replace",
+            current_vrl="abcdefghij",
+            selection_start=2,
+            selection_end=5,
+        )
+        assert r.mode == "replace"
+        assert r.selection_start == 2
+        assert r.selection_end == 5
+
+    def test_replace_mode_start_ge_end(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                mode="replace",
+                current_vrl="abcdefghij",
+                selection_start=5,
+                selection_end=5,
+            )
+
+    def test_replace_mode_end_out_of_range(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                mode="replace",
+                current_vrl="abc",
+                selection_start=0,
+                selection_end=99,
+            )
+
+    def test_empty_instruction_rejected(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="",
+                mode="insert",
+                current_vrl="",
+                cursor_offset=0,
+            )
+
+    def test_empty_current_vrl_with_cursor_zero_ok(self):
+        r = InlineVrlRequest(
+            instruction="寫一段 syslog parser",
+            mode="insert",
+            current_vrl="",
+            cursor_offset=0,
+        )
+        assert r.cursor_offset == 0
+
+    def test_logs_cap(self):
+        # 51 logs should be rejected (max_length=50)
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                mode="insert",
+                current_vrl="",
+                cursor_offset=0,
+                logs=["l"] * 51,
+            )
+
+    def test_current_vrl_too_long(self):
+        # 50001 chars should be rejected
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                mode="insert",
+                current_vrl="a" * 50_001,
+                cursor_offset=0,
+            )
+
+    def test_invalid_engine_rejected(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                mode="insert",
+                current_vrl="",
+                cursor_offset=0,
+                vrl_engine="0.99",
             )
