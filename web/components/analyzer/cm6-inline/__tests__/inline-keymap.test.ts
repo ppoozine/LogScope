@@ -1,4 +1,4 @@
-import { EditorState, EditorSelection } from "@codemirror/state";
+import { EditorSelection, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -7,17 +7,12 @@ import {
   handleEscReject,
   handleTabAccept,
 } from "@/components/analyzer/cm6-inline/inline-keymap";
-import {
-  inlineField,
-  setInlineState,
-} from "@/components/analyzer/cm6-inline/inline-state";
+import { inlineField, setInlineState } from "@/components/analyzer/cm6-inline/inline-state";
 
 function makeView(doc: string, selection?: { from: number; to: number }) {
   const state = EditorState.create({
     doc,
-    selection: selection
-      ? EditorSelection.single(selection.from, selection.to)
-      : undefined,
+    selection: selection ? EditorSelection.single(selection.from, selection.to) : undefined,
     extensions: [inlineField],
   });
   return new EditorView({ state, parent: document.body });

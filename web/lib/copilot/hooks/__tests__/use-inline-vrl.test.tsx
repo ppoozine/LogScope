@@ -1,12 +1,9 @@
 import { EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
-import { renderHook, act } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import {
-  inlineField,
-  setInlineState,
-} from "@/components/analyzer/cm6-inline/inline-state";
+import { inlineField } from "@/components/analyzer/cm6-inline/inline-state";
 import { useInlineVrl } from "@/lib/copilot/hooks/use-inline-vrl";
 import type { InlineVrlRequest } from "@/lib/copilot/types";
 
@@ -45,9 +42,7 @@ describe("useInlineVrl", () => {
           start(c) {
             const enc = new TextEncoder();
             c.enqueue(
-              enc.encode(
-                'event: text_delta\ndata: {"text":"X"}\n\nevent: done\ndata: {}\n\n',
-              ),
+              enc.encode('event: text_delta\ndata: {"text":"X"}\n\nevent: done\ndata: {}\n\n'),
             );
             c.close();
           },

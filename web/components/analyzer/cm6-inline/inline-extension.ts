@@ -5,11 +5,7 @@ import type { InlineVrlRequest } from "@/lib/copilot/types";
 
 import { makeInlineDecorations } from "./inline-decorations";
 import { inlineKeymap } from "./inline-keymap";
-import {
-  type InlineState,
-  inlineField,
-  setInlineState,
-} from "./inline-state";
+import { type InlineState, inlineField, setInlineState } from "./inline-state";
 
 export type InlineProviders = {
   getEngineVersion: () => "0.25" | "0.32";
@@ -24,8 +20,7 @@ export const inlineProvidersFacet = Facet.define<InlineProviders, InlineProvider
 const activeViewPlugin = ViewPlugin.fromClass(
   class {
     constructor(view: EditorView) {
-      (globalThis as { __cmInlineActiveView?: EditorView }).__cmInlineActiveView =
-        view;
+      (globalThis as { __cmInlineActiveView?: EditorView }).__cmInlineActiveView = view;
     }
     destroy() {
       const g = globalThis as { __cmInlineActiveView?: EditorView };
@@ -37,8 +32,7 @@ const activeViewPlugin = ViewPlugin.fromClass(
 export function inlineExtension(providers: InlineProviders) {
   const decorations = makeInlineDecorations({
     sendInlineRequest: (instruction: string, state: InlineState) => {
-      const view = (globalThis as { __cmInlineActiveView?: EditorView })
-        .__cmInlineActiveView;
+      const view = (globalThis as { __cmInlineActiveView?: EditorView }).__cmInlineActiveView;
       if (!view || state.kind !== "prompting") return;
       const base = buildRequest(view, providers, state);
       const req: InlineVrlRequest = { ...base, instruction };
@@ -83,4 +77,4 @@ function buildRequest(
 }
 
 // Re-export effect helpers so consumers (use-inline-vrl) can dispatch directly.
-export { setInlineState, inlineField };
+export { inlineField, setInlineState };

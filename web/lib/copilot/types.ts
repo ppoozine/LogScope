@@ -176,9 +176,9 @@ export type InlineVrlRequest = {
   instruction: string;
   mode: InlineMode;
   current_vrl: string;
-  cursor_offset?: number;          // mode=insert
-  selection_start?: number;        // mode=replace
-  selection_end?: number;          // mode=replace
+  cursor_offset?: number; // mode=insert
+  selection_start?: number; // mode=replace
+  selection_end?: number; // mode=replace
   vrl_engine: "0.25" | "0.32";
   logs: string[];
 };

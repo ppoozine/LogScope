@@ -1,10 +1,7 @@
 import type { EditorView } from "@codemirror/view";
 import { useCallback } from "react";
 
-import {
-  inlineField,
-  setInlineState,
-} from "@/components/analyzer/cm6-inline/inline-state";
+import { inlineField, setInlineState } from "@/components/analyzer/cm6-inline/inline-state";
 import { streamInlineVrl } from "@/lib/copilot/inline-vrl-client";
 import type { InlineVrlRequest } from "@/lib/copilot/types";
 
@@ -17,12 +14,8 @@ export function useInlineVrl(view: EditorView | null) {
       // idle. Anything else means a stale call — bail.
       if (cur.kind !== "prompting" && cur.kind !== "idle") return;
 
-      const anchor =
-        req.mode === "insert"
-          ? req.cursor_offset ?? 0
-          : req.selection_start ?? 0;
-      const selectionEnd =
-        req.mode === "replace" ? req.selection_end ?? null : null;
+      const anchor = req.mode === "insert" ? (req.cursor_offset ?? 0) : (req.selection_start ?? 0);
+      const selectionEnd = req.mode === "replace" ? (req.selection_end ?? null) : null;
 
       const controller = new AbortController();
       view.dispatch({

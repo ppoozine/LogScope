@@ -44,11 +44,7 @@ export const inlineField = StateField.define<InlineState>({
     for (const effect of tr.effects) {
       if (effect.is(setInlineState)) return effect.value;
     }
-    if (
-      tr.docChanged &&
-      ACTIVE_KINDS.includes(value.kind) &&
-      !tr.annotation(internalGhostInsert)
-    ) {
+    if (tr.docChanged && ACTIVE_KINDS.includes(value.kind) && !tr.annotation(internalGhostInsert)) {
       if (value.kind === "streaming") value.abort.abort();
       return { kind: "idle" };
     }

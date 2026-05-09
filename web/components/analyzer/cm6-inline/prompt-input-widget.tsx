@@ -1,6 +1,6 @@
 import { type EditorView, WidgetType } from "@codemirror/view";
 import { useEffect, useRef, useState } from "react";
-import { type Root, createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 
 export type PromptInputProps = {
   initial: string;
@@ -80,11 +80,7 @@ export class PromptInputWidget extends WidgetType {
     wrap.style.display = "inline-block";
     const root = createRoot(wrap);
     root.render(
-      <PromptInput
-        initial={this.initialValue}
-        onSubmit={this.onSubmit}
-        onCancel={this.onCancel}
-      />,
+      <PromptInput initial={this.initialValue} onSubmit={this.onSubmit} onCancel={this.onCancel} />,
     );
     (wrap as HTMLElement & { __root?: Root }).__root = root;
     return wrap;

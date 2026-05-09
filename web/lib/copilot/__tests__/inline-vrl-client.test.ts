@@ -46,15 +46,10 @@ describe("streamInlineVrl", () => {
 
   it("yields text_delta then done", async () => {
     fetchSpy.mockResolvedValue(
-      makeFetchResponse(
-        'event: text_delta\ndata: {"text":".dst"}\n\nevent: done\ndata: {}\n\n',
-      ),
+      makeFetchResponse('event: text_delta\ndata: {"text":".dst"}\n\nevent: done\ndata: {}\n\n'),
     );
     const events = await collect(REQ, new AbortController().signal);
-    expect(events).toEqual([
-      { type: "text_delta", text: ".dst" },
-      { type: "done" },
-    ]);
+    expect(events).toEqual([{ type: "text_delta", text: ".dst" }, { type: "done" }]);
   });
 
   it("yields error+done on http 5xx", async () => {
@@ -73,9 +68,7 @@ describe("streamInlineVrl", () => {
 
   it("ignores malformed frames", async () => {
     fetchSpy.mockResolvedValue(
-      makeFetchResponse(
-        "event: text_delta\ndata: {bad json}\n\nevent: done\ndata: {}\n\n",
-      ),
+      makeFetchResponse("event: text_delta\ndata: {bad json}\n\nevent: done\ndata: {}\n\n"),
     );
     const events = await collect(REQ, new AbortController().signal);
     // malformed text_delta dropped; done still emitted

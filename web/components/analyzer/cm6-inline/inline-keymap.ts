@@ -1,11 +1,7 @@
 import { Prec } from "@codemirror/state";
 import { type EditorView, type KeyBinding, keymap } from "@codemirror/view";
 
-import {
-  inlineField,
-  internalGhostInsert,
-  setInlineState,
-} from "./inline-state";
+import { inlineField, internalGhostInsert, setInlineState } from "./inline-state";
 
 export function handleCmdK(view: EditorView): boolean {
   const cur = view.state.field(inlineField);
@@ -30,7 +26,7 @@ export function handleTabAccept(view: EditorView): boolean {
   if (v.kind !== "ready") return false;
 
   const from = v.anchor;
-  const to = v.mode === "insert" ? v.anchor : v.selectionEnd ?? v.anchor;
+  const to = v.mode === "insert" ? v.anchor : (v.selectionEnd ?? v.anchor);
   view.dispatch({
     changes: { from, to, insert: v.ghost },
     annotations: internalGhostInsert.of(true),

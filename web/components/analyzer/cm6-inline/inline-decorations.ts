@@ -22,8 +22,7 @@ export function makeInlineDecorations(_providers: InlineProviders) {
         v.inputValue,
         (text) => _providers.sendInlineRequest(text, v),
         () => {
-          const view = (globalThis as { __cmInlineActiveView?: EditorView })
-            .__cmInlineActiveView;
+          const view = (globalThis as { __cmInlineActiveView?: EditorView }).__cmInlineActiveView;
           view?.dispatch({ effects: setInlineState.of({ kind: "idle" }) });
         },
       );
@@ -38,8 +37,7 @@ export function makeInlineDecorations(_providers: InlineProviders) {
           Decoration.mark({ class: "cm-inline-replace-original" }),
         );
       }
-      const at =
-        v.mode === "insert" ? v.anchor : v.selectionEnd ?? v.anchor;
+      const at = v.mode === "insert" ? v.anchor : (v.selectionEnd ?? v.anchor);
       builder.add(
         at,
         at,
@@ -53,8 +51,7 @@ export function makeInlineDecorations(_providers: InlineProviders) {
         at,
         Decoration.widget({
           widget: new HintBarWidget(v.kind, v.mode, undefined, () => {
-            const view = (globalThis as { __cmInlineActiveView?: EditorView })
-              .__cmInlineActiveView;
+            const view = (globalThis as { __cmInlineActiveView?: EditorView }).__cmInlineActiveView;
             if (v.kind === "streaming") v.abort.abort();
             view?.dispatch({ effects: setInlineState.of({ kind: "idle" }) });
           }),
@@ -69,8 +66,7 @@ export function makeInlineDecorations(_providers: InlineProviders) {
         v.anchor,
         Decoration.widget({
           widget: new HintBarWidget("error", v.mode, v.message, () => {
-            const view = (globalThis as { __cmInlineActiveView?: EditorView })
-              .__cmInlineActiveView;
+            const view = (globalThis as { __cmInlineActiveView?: EditorView }).__cmInlineActiveView;
             view?.dispatch({ effects: setInlineState.of({ kind: "idle" }) });
           }),
           side: 1,
