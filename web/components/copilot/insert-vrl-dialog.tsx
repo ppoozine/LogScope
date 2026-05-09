@@ -31,7 +31,9 @@ export function InsertVrlDialog() {
           <DiffPanel label="Copilot 提議" content={proposed} highlight />
         </div>
         <DialogFooter>
-          <Button variant="ghost" onClick={cancelInsert}>取消</Button>
+          <Button variant="ghost" onClick={cancelInsert}>
+            取消
+          </Button>
           <Button onClick={confirmInsert}>套用 Insert</Button>
         </DialogFooter>
       </DialogContent>
@@ -50,9 +52,7 @@ function DiffPanel({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">
-        {label}
-      </div>
+      <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
       <pre
         className={`max-h-80 overflow-auto rounded border p-2 font-mono text-[11px] ${
           highlight ? "bg-emerald-50" : "bg-muted/40"

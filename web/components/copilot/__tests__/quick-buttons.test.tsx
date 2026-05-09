@@ -8,6 +8,7 @@ import { useCopilotStore } from "@/lib/copilot/store";
 vi.mock("@/lib/copilot/hooks/use-streaming-chat", () => ({
   useStreamingChat: vi.fn(),
 }));
+
 import { useStreamingChat } from "@/lib/copilot/hooks/use-streaming-chat";
 
 describe("<QuickButtons>", () => {

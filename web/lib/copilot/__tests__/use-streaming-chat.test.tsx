@@ -100,10 +100,7 @@ describe("useStreamingChat", () => {
     resetStore();
     server.use(
       http.post("/api/v1/copilot/chat", () =>
-        sseResponse([
-          'event: text_delta\ndata: {"text":"ok"}\n\n',
-          "event: done\ndata: {}\n\n",
-        ]),
+        sseResponse(['event: text_delta\ndata: {"text":"ok"}\n\n', "event: done\ndata: {}\n\n"]),
       ),
     );
     const { result } = renderHook(() => useStreamingChat());
@@ -135,10 +132,7 @@ describe("useStreamingChat", () => {
     resetStore();
     server.use(
       http.post("/api/v1/copilot/chat", () =>
-        sseResponse([
-          'event: text_delta\ndata: {"text":"ok"}\n\n',
-          "event: done\ndata: {}\n\n",
-        ]),
+        sseResponse(['event: text_delta\ndata: {"text":"ok"}\n\n', "event: done\ndata: {}\n\n"]),
       ),
     );
     const { result } = renderHook(() => useStreamingChat());

@@ -55,7 +55,6 @@ export function useAnalyzerCopilotContext(state: AnalyzerStateForCopilot): void 
   // Register the editor bridge so Copilot can push generated VRL back into
   // the editor. Uses separate effect with different cleanup semantics:
   // pageContext clears to null on unmount, bridge resets to the null sentinel.
-  // biome-ignore lint/correctness/useExhaustiveDependencies: state.setVrl / state.getVrl listed as deps — callers stabilise with useCallback/useRef
   useEffect(() => {
     registerEditor({ setVrl: state.setVrl, getVrl: state.getVrl });
     return () => unregisterEditor();

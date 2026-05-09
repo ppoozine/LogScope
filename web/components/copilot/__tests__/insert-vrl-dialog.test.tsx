@@ -5,10 +5,12 @@ import { InsertVrlDialog } from "@/components/copilot/insert-vrl-dialog";
 import { useCopilotStore } from "@/lib/copilot/store";
 
 describe("<InsertVrlDialog>", () => {
-  beforeEach(() => useCopilotStore.setState({
-    pendingInsert: null,
-    editorBridge: { setVrl: null, getVrl: () => "old vrl" },
-  }));
+  beforeEach(() =>
+    useCopilotStore.setState({
+      pendingInsert: null,
+      editorBridge: { setVrl: null, getVrl: () => "old vrl" },
+    }),
+  );
 
   it("does not render when pendingInsert is null", () => {
     render(<InsertVrlDialog />);

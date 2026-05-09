@@ -1,10 +1,7 @@
 import { renderHook } from "@testing-library/react";
-import { beforeEach, describe, expect, it } from "vitest";
-
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useAnalyzerCopilotContext } from "@/lib/copilot/hooks/use-analyzer-context";
 import { useCopilotStore } from "@/lib/copilot/store";
-
-import { vi } from "vitest";
 
 beforeEach(() => {
   useCopilotStore.setState({
@@ -77,9 +74,13 @@ describe("useAnalyzerCopilotContext", () => {
     const getVrl = vi.fn(() => "current vrl");
     const { unmount } = renderHook(() =>
       useAnalyzerCopilotContext({
-        vrl: "x", vrlEngine: null, logs: [], parseResults: [],
+        vrl: "x",
+        vrlEngine: null,
+        logs: [],
+        parseResults: [],
         matchTopCandidate: null,
-        setVrl, getVrl,
+        setVrl,
+        getVrl,
       }),
     );
     const b1 = useCopilotStore.getState().editorBridge;

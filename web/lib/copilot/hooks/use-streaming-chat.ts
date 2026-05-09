@@ -4,7 +4,12 @@ import { useCallback } from "react";
 
 import { streamChat } from "@/lib/copilot/sse-client";
 import { useCopilotStore } from "@/lib/copilot/store";
-import type { BackendPageContext, ChatRequestBody, PageContext, SkillName } from "@/lib/copilot/types";
+import type {
+  BackendPageContext,
+  ChatRequestBody,
+  PageContext,
+  SkillName,
+} from "@/lib/copilot/types";
 
 function pickDefaultSkill(ctx: PageContext | null): SkillName | null {
   if (!ctx) return null;

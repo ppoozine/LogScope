@@ -19,7 +19,7 @@ describe("extractVrlBlock", () => {
   });
 
   it("returns null for an unclosed (streaming-mid) vrl block", () => {
-    const text = "```vrl\n. = parse_syslog";  // 還沒到 closing ```
+    const text = "```vrl\n. = parse_syslog"; // 還沒到 closing ```
     expect(extractVrlBlock(text)).toBeNull();
   });
 
