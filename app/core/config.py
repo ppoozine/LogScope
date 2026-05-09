@@ -20,6 +20,16 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     llm_match_model: str = Field("claude-haiku-4-5-20251001", alias="LLM_MATCH_MODEL")
+    llm_copilot_model: str = Field(
+        "claude-haiku-4-5-20251001", alias="LLM_COPILOT_MODEL"
+    )
+    llm_copilot_max_history: int = Field(20, alias="LLM_COPILOT_MAX_HISTORY")
+    llm_copilot_max_log_lines_in_context: int = Field(
+        20, alias="LLM_COPILOT_MAX_LOG_LINES_IN_CONTEXT"
+    )
+    llm_copilot_max_vrl_chars_in_context: int = Field(
+        4000, alias="LLM_COPILOT_MAX_VRL_CHARS_IN_CONTEXT"
+    )
 
     clickhouse_url: str | None = Field(default=None, alias="CLICKHOUSE_URL")
 
