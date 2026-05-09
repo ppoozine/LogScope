@@ -128,3 +128,23 @@
     @apply font-sans;
   }
 }
+
+/* Copilot D3 — inline VRL completion */
+
+.cm-inline-replace-original {
+  text-decoration: line-through;
+  opacity: 0.45;
+}
+
+.cm-inline-ghost {
+  font-style: italic;
+}
+
+.cm-inline-prompt {
+  z-index: 10;
+}
+
+.cm-inline-hint-bar {
+  margin-left: 6px;
+  vertical-align: middle;
+}
