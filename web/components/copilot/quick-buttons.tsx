@@ -35,6 +35,33 @@ export function QuickButtons() {
       >
         ✦ 生成 VRL
       </button>
+      {ctx.vrl && (
+        <button
+          type="button"
+          disabled={isStreaming}
+          onClick={() =>
+            void send(
+              "請優化 <current_vrl>，看 <parse_results> 中哪幾行錯了。輸出 ```vrl ... ``` 區塊（單一完整程式）+「改了什麼」逐行說明。",
+              { skill: "vrl_optimize" },
+            )
+          }
+          className="rounded-md border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs text-purple-800 hover:bg-purple-100 disabled:opacity-50"
+        >
+          ✦ 最佳化 VRL
+        </button>
+      )}
+      <button
+        type="button"
+        disabled={isStreaming}
+        onClick={() =>
+          void send("請列出 <logs> 中各筆的異常值，每筆標示「第 N 筆」+ 一行描述 + 〔依據〕。", {
+            skill: "anomaly",
+          })
+        }
+        className="rounded-md border border-purple-300 bg-purple-50 px-3 py-1.5 text-xs text-purple-800 hover:bg-purple-100 disabled:opacity-50"
+      >
+        ✦ 找異常值
+      </button>
     </div>
   );
 }
