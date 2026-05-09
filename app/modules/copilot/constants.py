@@ -10,6 +10,7 @@ SKILL_LOG_EXPLAIN = "log_explain"
 SKILL_VRL_GENERATE = "vrl_generate"
 SKILL_VRL_OPTIMIZE = "vrl_optimize"
 SKILL_ANOMALY = "anomaly"
+SKILL_VRL_INLINE = "vrl_inline"
 
 # Error codes (machine-readable, frontend may switch on these)
 ERROR_NO_API_KEY = "no_api_key"
