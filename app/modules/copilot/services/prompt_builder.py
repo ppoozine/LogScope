@@ -162,3 +162,36 @@ def _render_page_context_xml(
 
     lines.append("</page_context>")
     return "\n".join(lines)
+
+
+def build_system_blocks(
+    *,
+    skill: Literal["log_explain"] | None,
+    page_context: PageContext | None,
+    max_log_lines: int,
+    max_vrl_chars: int,
+) -> list[dict]:
+    """Return Anthropic `system` parameter as a list of TextBlockParam dicts.
+
+    Block 1: persona + skill instruction (cache_control: ephemeral).
+    Block 2: <page_context> XML (no cache, omitted when page_context is None).
+    """
+    blocks: list[dict] = [
+        {
+            "type": "text",
+            "text": _build_block1(skill),
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+    if page_context is not None:
+        blocks.append(
+            {
+                "type": "text",
+                "text": _render_page_context_xml(
+                    page_context,
+                    max_log_lines=max_log_lines,
+                    max_vrl_chars=max_vrl_chars,
+                ),
+            }
+        )
+    return blocks

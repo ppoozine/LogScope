@@ -198,3 +198,52 @@ class TestRenderPageContextXml:
 
         assert "]]]]><![CDATA[>" in xml
         assert xml.count("<![CDATA[") == xml.count("]]>")
+
+
+class TestBuildSystemBlocks:
+    def test_no_page_context_returns_one_block(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+        blocks = build_system_blocks(
+            skill="log_explain",
+            page_context=None,
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert len(blocks) == 1
+        assert blocks[0]["type"] == "text"
+        assert blocks[0]["cache_control"] == {"type": "ephemeral"}
+        assert "Skill: log_explain" in blocks[0]["text"]
+
+    def test_with_page_context_returns_two_blocks(self):
+        from app.modules.copilot.schemas import PageContext
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+        ctx = PageContext(page="analyzer", logs=["a"])
+        blocks = build_system_blocks(
+            skill="log_explain",
+            page_context=ctx,
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert len(blocks) == 2
+        # block 1 cached
+        assert blocks[0]["cache_control"] == {"type": "ephemeral"}
+        # block 2 NOT cached
+        assert "cache_control" not in blocks[1]
+        assert "<page_context" in blocks[1]["text"]
+
+    def test_no_skill_no_context(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+        blocks = build_system_blocks(
+            skill=None,
+            page_context=None,
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert len(blocks) == 1
+        assert "Skill: log_explain" not in blocks[0]["text"]
