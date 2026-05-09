@@ -460,3 +460,100 @@ class TestLibraryOverviewXml:
         )
         # Empty filters renders an empty <filters/> element
         assert "<filters/>" in xml or "<filters />" in xml
+
+
+class TestLibraryProductXml:
+    def _ctx(self, active_log_type=None):
+        from app.modules.copilot.schemas import LibraryProductPageContext
+        return LibraryProductPageContext(
+            page="library_product",
+            vendor_slug="paloalto",
+            product_slug="pan-os",
+            product_status="active",
+            active_log_type=active_log_type,
+        )
+
+    def test_no_active_log_type(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        xml = _render_library_product_xml(self._ctx(), max_vrl_chars=4000)
+        assert "<vendor_slug>paloalto</vendor_slug>" in xml
+        assert "<product_slug>pan-os</product_slug>" in xml
+        assert "<product_status>active</product_status>" in xml
+        # active_log_type element is omitted entirely when None
+        assert "<active_log_type" not in xml
+
+    def test_with_active_log_type(self):
+        from app.modules.copilot.schemas import ActiveLogTypeContext, FieldSummary
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(
+            name="traffic",
+            fields=[
+                FieldSummary(name="src_ip", type="string", required=True),
+                FieldSummary(name="dst_port", type="integer", required=False),
+            ],
+            samples_count=23,
+            parse_rule_head=". = parse_syslog!(.message)",
+        )
+        xml = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        assert '<active_log_type name="traffic">' in xml
+        assert '<fields count="2">' in xml
+        assert '<field name="src_ip" type="string" required="true"/>' in xml
+        assert '<field name="dst_port" type="integer" required="false"/>' in xml
+        assert "<samples_count>23</samples_count>" in xml
+        assert "parse_syslog" in xml
+
+    def test_active_log_type_no_parse_rule_head(self):
+        from app.modules.copilot.schemas import ActiveLogTypeContext
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(name="t", fields=[], samples_count=0, parse_rule_head=None)
+        xml = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        assert '<active_log_type name="t">' in xml
+        # parse_rule_head element omitted when None
+        assert "<parse_rule_head" not in xml
+
+    def test_parse_rule_head_truncated(self):
+        from app.modules.copilot.schemas import ActiveLogTypeContext
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        long_rule = "x" * 10000
+        alt = ActiveLogTypeContext(name="t", parse_rule_head=long_rule)
+        xml = _render_library_product_xml(
+            self._ctx(active_log_type=alt), max_vrl_chars=100,
+        )
+        # truncated_to attribute appears with the cap value
+        assert 'truncated_to="100"' in xml
+        # Truncated content present
+        assert "x" * 100 in xml
+        # Original full rule NOT in output
+        assert "x" * 200 not in xml
+
+    def test_parse_rule_head_with_cdata_terminator_escaped(self):
+        """`]]>` inside parse_rule_head must be escaped via _safe_cdata."""
+        from app.modules.copilot.schemas import ActiveLogTypeContext
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(
+            name="t", parse_rule_head='. = parse_json(.) ?? "]]>"',
+        )
+        xml = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        # _safe_cdata splits the CDATA boundary
+        assert "]]]]><![CDATA[>" in xml
+        # Balanced CDATA opens/closes
+        assert xml.count("<![CDATA[") == xml.count("]]>")
+
+    def test_field_attributes_use_quoteattr(self):
+        """Field names with quotes shouldn't break XML."""
+        import xml.etree.ElementTree as ET
+        from app.modules.copilot.schemas import ActiveLogTypeContext, FieldSummary
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(
+            name='log "type"',  # name with quotes
+            fields=[FieldSummary(name='field "x"', type="string", required=True)],
+        )
+        xml_str = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        # Resulting XML must be parsable
+        root = ET.fromstring(xml_str)
+        alt_el = root.find(".//active_log_type")
+        assert alt_el is not None
+        assert alt_el.get("name") == 'log "type"'
+        field_el = root.find(".//field")
+        assert field_el is not None
+        assert field_el.get("name") == 'field "x"'

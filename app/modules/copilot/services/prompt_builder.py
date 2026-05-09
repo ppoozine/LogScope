@@ -329,8 +329,39 @@ def _render_library_overview_xml(ctx, *, max_products: int) -> str:
 
 
 def _render_library_product_xml(ctx, *, max_vrl_chars: int) -> str:
-    """Stub: T19 will fill in the real implementation."""
-    return '<page_context page="library_product"><facts/></page_context>'
+    """Render LibraryProductPageContext as XML."""
+    lines = ['<page_context page="library_product">']
+    lines.append("  <facts>")
+    lines.append(f"    <vendor_slug>{ctx.vendor_slug}</vendor_slug>")
+    lines.append(f"    <product_slug>{ctx.product_slug}</product_slug>")
+    lines.append(f"    <product_status>{ctx.product_status}</product_status>")
+    lines.append("  </facts>")
+
+    if ctx.active_log_type is not None:
+        alt = ctx.active_log_type
+        lines.append(f"  <active_log_type name={quoteattr(alt.name)}>")
+        lines.append(f'    <fields count="{len(alt.fields)}">')
+        for f in alt.fields:
+            lines.append(
+                f"      <field name={quoteattr(f.name)} type={quoteattr(f.type)} "
+                f'required="{str(f.required).lower()}"/>'
+            )
+        lines.append("    </fields>")
+        lines.append(f"    <samples_count>{alt.samples_count}</samples_count>")
+        if alt.parse_rule_head:
+            head = alt.parse_rule_head
+            if len(head) > max_vrl_chars:
+                attr = f' truncated_to="{max_vrl_chars}"'
+                head = head[:max_vrl_chars]
+            else:
+                attr = ""
+            lines.append(f"    <parse_rule_head{attr}>")
+            lines.append(f"      <![CDATA[{_safe_cdata(head)}]]>")
+            lines.append("    </parse_rule_head>")
+        lines.append("  </active_log_type>")
+
+    lines.append("</page_context>")
+    return "\n".join(lines)
 
 
 def _render_library_versions_xml(ctx, *, max_vrl_chars: int) -> str:
