@@ -42,7 +42,7 @@ class TestBuildBlock1:
 
 class TestRenderPageContextXml:
     def _ctx(self, **kwargs):
-        from app.modules.copilot.schemas import PageContext
+        from app.modules.copilot.schemas import AnalyzerPageContext
         defaults = {
             "page": "analyzer",
             "vrl": None,
@@ -52,7 +52,7 @@ class TestRenderPageContextXml:
             "match_top_candidate": None,
         }
         defaults.update(kwargs)
-        return PageContext(**defaults)
+        return AnalyzerPageContext(**defaults)
 
     def test_minimal_context_only_facts(self):
         from app.modules.copilot.services.prompt_builder import _render_page_context_xml
@@ -222,10 +222,10 @@ class TestBuildSystemBlocks:
         assert "Skill: log_explain" in blocks[0]["text"]
 
     def test_with_page_context_returns_two_blocks(self):
-        from app.modules.copilot.schemas import PageContext
+        from app.modules.copilot.schemas import AnalyzerPageContext
         from app.modules.copilot.services.prompt_builder import build_system_blocks
 
-        ctx = PageContext(page="analyzer", logs=["a"])
+        ctx = AnalyzerPageContext(page="analyzer", logs=["a"])
         blocks = build_system_blocks(
             skill="log_explain",
             page_context=ctx,
