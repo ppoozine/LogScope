@@ -277,3 +277,37 @@ class TestVrlGenerateBlock:
         )
         text = blocks[0]["text"]
         assert "Skill: log_explain" not in text
+
+    def test_vrl_generate_includes_function_cheatsheet(self):
+        """Cheatsheet exists so the LLM doesn't have to remember function
+        names; the absence of these names was a top cause of compile errors
+        in early production samples."""
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+        blocks = build_system_blocks(
+            skill="vrl_generate", page_context=None,
+            max_log_lines=10, max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        # Core parse functions
+        assert "parse_syslog" in text
+        assert "parse_json" in text
+        assert "parse_regex" in text
+        # Suffix semantics — most common compile-error source
+        assert "??" in text
+        # Engine version contrast
+        assert "0.32" in text
+        assert "0.25" in text
+
+    def test_vrl_generate_has_two_examples(self):
+        """JSON example was added because syslog-only example overfit the
+        LLM toward syslog-style output even for JSON inputs."""
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+        blocks = build_system_blocks(
+            skill="vrl_generate", page_context=None,
+            max_log_lines=10, max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        assert "Example A" in text
+        assert "Example B" in text
+        # Each example has its own ```vrl block
+        assert text.count("```vrl") >= 2
