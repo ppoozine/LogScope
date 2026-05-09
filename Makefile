@@ -197,7 +197,7 @@ dev-stats:
 	@echo "ClickHouse on :8123 (CLICKHOUSE_URL in .env.example is enabled by default)"
 
 down:
-	docker compose down
+	docker compose --profile stats down
 
 logs:
 	docker compose logs -f
