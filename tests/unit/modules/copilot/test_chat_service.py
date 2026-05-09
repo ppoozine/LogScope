@@ -49,10 +49,12 @@ def _make_service(*, client=None, api_key: str | None = "sk-test"):
     return ChatService(
         anthropic_client=client,
         anthropic_api_key=api_key,
-        model="claude-haiku-4-5-20251001",
+        default_model="claude-haiku-4-5-20251001",
+        skill_models={},
         max_history=20,
         max_log_lines_in_context=20,
         max_vrl_chars_in_context=4000,
+        max_library_products_in_context=20,
     )
 
 
@@ -149,10 +151,12 @@ class TestChatServiceStream:
         service = ChatService(
             anthropic_client=client,
             anthropic_api_key="sk",
-            model="m",
+            default_model="m",
+            skill_models={},
             max_history=20,
             max_log_lines_in_context=20,
             max_vrl_chars_in_context=4000,
+            max_library_products_in_context=20,
         )
 
         # 30 alternating user/assistant — must end with user
@@ -206,3 +210,29 @@ class TestChatServiceStream:
         assert isinstance(system, list)
         assert system[0]["cache_control"] == {"type": "ephemeral"}
         assert "log_explain" in system[0]["text"]
+
+
+class TestModelDispatch:
+    def _make_service(self, skill_models, default_model="claude-haiku-4-5"):
+        from app.modules.copilot.services.chat_service import ChatService
+        return ChatService(
+            anthropic_client=object(),
+            anthropic_api_key="test",
+            default_model=default_model,
+            skill_models=skill_models,
+            max_history=20,
+            max_log_lines_in_context=10,
+            max_vrl_chars_in_context=4000,
+            max_library_products_in_context=20,
+        )
+
+    def test_no_override_uses_default(self):
+        s = self._make_service(skill_models={})
+        assert s._model_for("log_explain") == "claude-haiku-4-5"
+        assert s._model_for(None) == "claude-haiku-4-5"
+
+    def test_vrl_generate_override_used(self):
+        s = self._make_service(skill_models={"vrl_generate": "claude-sonnet-4-6"})
+        assert s._model_for("vrl_generate") == "claude-sonnet-4-6"
+        # Other skills 仍走 default
+        assert s._model_for("log_explain") == "claude-haiku-4-5"

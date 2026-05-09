@@ -38,13 +38,22 @@ async def get_chat_service(
     client = anthropic.AsyncAnthropic(
         api_key=settings.anthropic_api_key or "placeholder"
     )
+
+    skill_models: dict[str, str] = {}
+    if settings.llm_copilot_vrl_model:
+        skill_models["vrl_generate"] = settings.llm_copilot_vrl_model
+        # M3 加 vrl_optimize 時：
+        # skill_models["vrl_optimize"] = settings.llm_copilot_vrl_model
+
     return ChatService(
         anthropic_client=cast(Any, client),
         anthropic_api_key=settings.anthropic_api_key,
-        model=settings.llm_copilot_model,
+        default_model=settings.llm_copilot_model,
+        skill_models=skill_models,
         max_history=settings.llm_copilot_max_history,
         max_log_lines_in_context=settings.llm_copilot_max_log_lines_in_context,
         max_vrl_chars_in_context=settings.llm_copilot_max_vrl_chars_in_context,
+        max_library_products_in_context=settings.llm_copilot_max_library_products_in_context,
     )
 
 

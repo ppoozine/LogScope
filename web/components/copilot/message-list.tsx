@@ -39,7 +39,10 @@ export function MessageList() {
   }
 
   return (
-    <div ref={containerRef} className="flex flex-1 flex-col gap-3 overflow-y-auto px-3 py-3">
+    <div
+      ref={containerRef}
+      className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3"
+    >
       {messages.map((m, idx) => (
         <MessageBubble key={m.id} message={m} isLastAssistant={idx === lastAssistantIdx} />
       ))}

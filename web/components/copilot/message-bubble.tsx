@@ -20,10 +20,15 @@ export function MessageBubble({ message, isLastAssistant }: Props) {
   const isUser = message.role === "user";
   const isStreaming = useCopilotStore((s) => s.isStreaming);
   const messages = useCopilotStore((s) => s.messages);
+  const editorBridge = useCopilotStore((s) => s.editorBridge);
+  const requestInsert = useCopilotStore((s) => s.requestInsert);
   const { send } = useStreamingChat();
   const hasError = !!message.error;
   const showStreamingDots =
     isLastAssistant && isStreaming && !hasError && message.content.length === 0;
+
+  const showInsertChip = message.role === "assistant" && !hasError && !!message.vrlBlock;
+  const canInsert = editorBridge.setVrl !== null;
 
   const handleRetry = () => {
     // re-send the last user message
@@ -60,6 +65,19 @@ export function MessageBubble({ message, isLastAssistant }: Props) {
         ) : (
           <div className="prose prose-sm max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+          </div>
+        )}
+        {showInsertChip && (
+          <div className="mt-2">
+            <button
+              type="button"
+              disabled={!canInsert}
+              onClick={() => requestInsert(message.vrlBlock!, message.id)}
+              title={canInsert ? undefined : "需在 Analyzer 頁才能 Insert"}
+              className="rounded-md border border-purple-300 bg-purple-50 px-2 py-1 text-[11px] text-purple-800 hover:bg-purple-100 disabled:opacity-50"
+            >
+              ✦ Insert into editor
+            </button>
           </div>
         )}
         {showStreamingDots && (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useDebounce } from "use-debounce";
 
 import { DiffPane } from "@/components/analyzer/diff-pane";
@@ -100,6 +100,15 @@ export function AnalyzerView({ preload, noKey }: Props) {
   const parseData = parse.data ?? null;
   const matchData = match.data ?? null;
   const topCandidate = matchData?.candidates?.[0] ?? null;
+
+  // Stable callbacks for the editor bridge. vrlRef mirrors the latest vrl
+  // value so getVrlForCopilot always returns the current value without
+  // needing to re-create the callback (which would re-trigger hook deps).
+  const vrlRef = useRef(vrl);
+  vrlRef.current = vrl;
+  const getVrlForCopilot = useCallback(() => vrlRef.current, []);
+  const setVrlForCopilot = useCallback((next: string) => setVrl(next), []);
+
   useAnalyzerCopilotContext({
     vrl: vrl ? vrl : null,
     vrlEngine: parseData?.engine ?? null,
@@ -118,6 +127,8 @@ export function AnalyzerView({ preload, noKey }: Props) {
           confidence: topCandidate.confidence,
         }
       : null,
+    setVrl: setVrlForCopilot,
+    getVrl: getVrlForCopilot,
   });
 
   // Fire-and-forget /check call. We swallow network errors here (instead of

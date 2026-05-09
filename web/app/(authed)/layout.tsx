@@ -13,10 +13,12 @@ export default async function AuthedLayout({ children }: { children: ReactNode }
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex h-dvh flex-col">
       <TopNav />
-      <main className="flex-1">{children}</main>
-      <CopilotPanel />
+      <div className="flex min-h-0 flex-1">
+        <main className="min-w-0 flex-1 overflow-auto">{children}</main>
+        <CopilotPanel />
+      </div>
       <CopilotToggle />
     </div>
   );

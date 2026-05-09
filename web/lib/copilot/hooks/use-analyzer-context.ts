@@ -11,6 +11,8 @@ type AnalyzerStateForCopilot = {
   logs: string[];
   parseResults: ParseResult[];
   matchTopCandidate: MatchHypothesis | null;
+  setVrl: (next: string) => void;
+  getVrl: () => string;
 };
 
 /**
@@ -26,6 +28,8 @@ type AnalyzerStateForCopilot = {
  */
 export function useAnalyzerCopilotContext(state: AnalyzerStateForCopilot): void {
   const setPageContext = useCopilotStore((s) => s.setPageContext);
+  const registerEditor = useCopilotStore((s) => s.registerEditor);
+  const unregisterEditor = useCopilotStore((s) => s.unregisterEditor);
 
   const latestRef = useRef(state);
   latestRef.current = state;
@@ -47,4 +51,12 @@ export function useAnalyzerCopilotContext(state: AnalyzerStateForCopilot): void 
     });
     return () => setPageContext(null);
   }, [setPageContext, state.vrl, state.vrlEngine, logsKey, parseKey, matchKey]);
+
+  // Register the editor bridge so Copilot can push generated VRL back into
+  // the editor. Uses separate effect with different cleanup semantics:
+  // pageContext clears to null on unmount, bridge resets to the null sentinel.
+  useEffect(() => {
+    registerEditor({ setVrl: state.setVrl, getVrl: state.getVrl });
+    return () => unregisterEditor();
+  }, [registerEditor, unregisterEditor, state.setVrl, state.getVrl]);
 }

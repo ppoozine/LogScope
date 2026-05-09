@@ -15,12 +15,14 @@ export function CopilotProvider({ children }: { children: ReactNode }) {
 type CopilotState = {
   isOpen: boolean;
   toggle: () => void;
+  open: () => void;
   close: () => void;
 };
 
 export function useCopilot(): CopilotState {
   const isOpen = useCopilotStore((s) => s.isOpen);
   const toggle = useCopilotStore((s) => s.toggle);
+  const open = useCopilotStore((s) => s.open);
   const close = useCopilotStore((s) => s.close);
-  return { isOpen, toggle, close };
+  return { isOpen, toggle, open, close };
 }

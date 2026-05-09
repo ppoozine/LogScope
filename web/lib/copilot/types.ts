@@ -11,6 +11,8 @@ export type ChatMessage = {
   content: string;
   /** Present on assistant messages when streaming failed. */
   error?: string;
+  /** VRL block extracted after streaming ends. */
+  vrlBlock?: string;
 };
 
 export type ParseResult = {
@@ -37,7 +39,7 @@ export type PageContext = {
 
 export type ChatRequestBody = {
   messages: { role: ChatRole; content: string }[];
-  skill: "log_explain" | null;
+  skill: SkillName | null;
   page_context: BackendPageContext | null;
 };
 
@@ -60,3 +62,15 @@ export type SSEEvent =
   | { type: "text_delta"; text: string }
   | { type: "error"; code: string; message: string }
   | { type: "done" };
+
+export type SkillName = "log_explain" | "vrl_generate";
+
+export type EditorBridge = {
+  setVrl: ((next: string) => void) | null;
+  getVrl: () => string;
+};
+
+export type PendingInsert = {
+  proposedVrl: string;
+  messageId: string;
+};

@@ -27,17 +27,26 @@ class ChatService:
         *,
         anthropic_client,
         anthropic_api_key: str | None,
-        model: str,
+        default_model: str,
+        skill_models: dict[str, str] | None = None,
         max_history: int,
         max_log_lines_in_context: int,
         max_vrl_chars_in_context: int,
+        max_library_products_in_context: int,
     ) -> None:
         self._client = anthropic_client
         self._api_key = anthropic_api_key
-        self._model = model
+        self._default_model = default_model
+        self._skill_models = skill_models or {}
         self._max_history = max_history
         self._max_log_lines = max_log_lines_in_context
         self._max_vrl_chars = max_vrl_chars_in_context
+        self._max_library_products = max_library_products_in_context
+
+    def _model_for(self, skill: str | None) -> str:
+        if skill and skill in self._skill_models:
+            return self._skill_models[skill]
+        return self._default_model
 
     async def stream(self, *, request: ChatRequest) -> AsyncIterator[bytes]:
         if not self._api_key:
@@ -64,7 +73,7 @@ class ChatService:
 
         try:
             async with self._client.messages.stream(
-                model=self._model,
+                model=self._model_for(request.skill),
                 max_tokens=2048,
                 system=system_blocks,
                 messages=anthropic_messages,

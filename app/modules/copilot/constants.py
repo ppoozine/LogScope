@@ -7,6 +7,7 @@ SSE_EVENT_DONE = "done"
 
 # Skill ids
 SKILL_LOG_EXPLAIN = "log_explain"
+SKILL_VRL_GENERATE = "vrl_generate"
 
 # Error codes (machine-readable, frontend may switch on these)
 ERROR_NO_API_KEY = "no_api_key"

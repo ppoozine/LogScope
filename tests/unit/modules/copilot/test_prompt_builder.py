@@ -152,14 +152,16 @@ class TestRenderPageContextXml:
         xml_str = _render_page_context_xml(
             self._ctx(
                 parse_results=[
-                    {"index": 1, "status": "ok"},
-                    {"index": 2, "status": "error", "message": 'field "x" missing'},
+                    {"index": 0, "status": "ok"},
+                    {"index": 1, "status": "error", "message": 'field "x" missing'},
                 ]
             ),
             max_log_lines=20,
             max_vrl_chars=4000,
         )
 
+        # Backend ParseResultItem.index is 0-based; renderer adds +1 so the
+        # number lines up with <log index="N"> rendering above.
         assert '<result index="1" status="ok"/>' in xml_str
         # Naive interpolation would break the XML. We assert by *parsing* the
         # rendered output: a valid XML parse proves the `"` was correctly
@@ -168,7 +170,10 @@ class TestRenderPageContextXml:
         root = ET.fromstring(xml_str)
         results = root.findall(".//result")
         assert len(results) == 2
+        ok_one = results[0]
         err = results[1]
+        assert ok_one.get("index") == "1"
+        assert err.get("index") == "2"
         assert err.get("status") == "error"
         assert err.get("message") == 'field "x" missing'
 
@@ -247,3 +252,67 @@ class TestBuildSystemBlocks:
 
         assert len(blocks) == 1
         assert "Skill: log_explain" not in blocks[0]["text"]
+
+
+class TestVrlGenerateBlock:
+    def test_vrl_generate_skill_uses_dedicated_block(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+        blocks = build_system_blocks(
+            skill="vrl_generate",
+            page_context=None,
+            max_log_lines=10,
+            max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        # 含 persona 段
+        assert "LogScope Copilot" in text
+        # 含 vrl_generate skill 段
+        assert "vrl_generate" in text
+        # 含關鍵指令
+        assert "```vrl" in text
+        assert "hard-code" in text.lower() or "hardcode" in text.lower()
+        assert "You must NOT" in text
+
+    def test_vrl_generate_does_not_include_log_explain_section(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+        blocks = build_system_blocks(
+            skill="vrl_generate", page_context=None,
+            max_log_lines=10, max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        assert "Skill: log_explain" not in text
+
+    def test_vrl_generate_includes_function_cheatsheet(self):
+        """Cheatsheet exists so the LLM doesn't have to remember function
+        names; the absence of these names was a top cause of compile errors
+        in early production samples."""
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+        blocks = build_system_blocks(
+            skill="vrl_generate", page_context=None,
+            max_log_lines=10, max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        # Core parse functions
+        assert "parse_syslog" in text
+        assert "parse_json" in text
+        assert "parse_regex" in text
+        # Suffix semantics — most common compile-error source
+        assert "??" in text
+        # Engine version contrast
+        assert "0.32" in text
+        assert "0.25" in text
+
+    def test_vrl_generate_has_two_examples(self):
+        """JSON example was added because syslog-only example overfit the
+        LLM toward syslog-style output even for JSON inputs."""
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+        blocks = build_system_blocks(
+            skill="vrl_generate", page_context=None,
+            max_log_lines=10, max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        assert "Example A" in text
+        assert "Example B" in text
+        # Each example has its own ```vrl block
+        assert text.count("```vrl") >= 2
