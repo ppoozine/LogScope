@@ -17,26 +17,67 @@ function pickDefaultSkill(ctx: PageContext | null): SkillName | null {
   return "log_explain";
 }
 
-function toBackendPageContext(ctx: PageContext): BackendPageContext {
-  return {
-    page: ctx.page,
-    vrl: ctx.vrl,
-    vrl_engine: ctx.vrlEngine,
-    logs: ctx.logs,
-    parse_results: ctx.parseResults.map((r) => ({
-      index: r.index,
-      status: r.status,
-      ...(r.message !== undefined ? { message: r.message } : {}),
-    })),
-    match_top_candidate: ctx.matchTopCandidate
-      ? {
-          vendor_slug: ctx.matchTopCandidate.vendorSlug,
-          product_slug: ctx.matchTopCandidate.productSlug,
-          log_type_name: ctx.matchTopCandidate.logTypeName,
-          confidence: ctx.matchTopCandidate.confidence,
-        }
-      : null,
-  };
+export function toBackendPageContext(ctx: PageContext): BackendPageContext {
+  switch (ctx.page) {
+    case "analyzer":
+      return {
+        page: "analyzer",
+        vrl: ctx.vrl,
+        vrl_engine: ctx.vrlEngine,
+        logs: ctx.logs,
+        parse_results: ctx.parseResults.map((r) => ({
+          index: r.index,
+          status: r.status,
+          ...(r.message !== undefined ? { message: r.message } : {}),
+        })),
+        match_top_candidate: ctx.matchTopCandidate
+          ? {
+              vendor_slug: ctx.matchTopCandidate.vendorSlug,
+              product_slug: ctx.matchTopCandidate.productSlug,
+              log_type_name: ctx.matchTopCandidate.logTypeName,
+              confidence: ctx.matchTopCandidate.confidence,
+            }
+          : null,
+      };
+    case "library_overview":
+      return {
+        page: "library_overview",
+        filters: ctx.filters,
+        vendor_count: ctx.vendorCount,
+        product_count: ctx.productCount,
+        products_missing_parse_rule: ctx.productsMissingParseRule,
+      };
+    case "library_product":
+      return {
+        page: "library_product",
+        vendor_slug: ctx.vendorSlug,
+        product_slug: ctx.productSlug,
+        product_status: ctx.productStatus,
+        active_log_type: ctx.activeLogType
+          ? {
+              name: ctx.activeLogType.name,
+              fields: ctx.activeLogType.fields,
+              samples_count: ctx.activeLogType.samplesCount,
+              parse_rule_head: ctx.activeLogType.parseRuleHead,
+            }
+          : null,
+      };
+    case "library_versions":
+      return {
+        page: "library_versions",
+        vendor_slug: ctx.vendorSlug,
+        product_slug: ctx.productSlug,
+        log_type_name: ctx.logTypeName,
+        diff: ctx.diff
+          ? {
+              base_version: ctx.diff.baseVersion,
+              head_version: ctx.diff.headVersion,
+              base_vrl: ctx.diff.baseVrl,
+              head_vrl: ctx.diff.headVrl,
+            }
+          : null,
+      };
+  }
 }
 
 export function useStreamingChat() {

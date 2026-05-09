@@ -5,6 +5,11 @@ from xml.sax.saxutils import quoteattr
 from app.modules.copilot.schemas import PageContext
 
 
+def _safe_cdata(text: str) -> str:
+    """Escape ``]]>`` sequences so a CDATA section can wrap the text."""
+    return text.replace("]]>", "]]]]><![CDATA[>")
+
+
 _BLOCK1_PERSONA = """You are LogScope Copilot. The user is a security engineer.
 
 Respond in 繁體中文. Engineers want answers, not paragraphs.
@@ -210,13 +215,13 @@ def _build_block1(skill: str | None) -> str:
     return _BLOCK1_PERSONA + block
 
 
-def _render_page_context_xml(
-    ctx: PageContext,
+def _render_analyzer_xml(
+    ctx,
     *,
     max_log_lines: int,
     max_vrl_chars: int,
 ) -> str:
-    """Render PageContext as a single XML string for prompt block 2.
+    """Render AnalyzerPageContext as XML for prompt block 2.
 
     Uses CDATA for raw log lines and VRL content; quoteattr for attributes.
     Hypotheses block always renders (empty if no candidate) so the LLM sees
@@ -253,7 +258,7 @@ def _render_page_context_xml(
         showing = min(len(ctx.logs), max_log_lines)
         lines.append(f'  <logs count="{len(ctx.logs)}" showing="{showing}">')
         for i, raw in enumerate(ctx.logs[:max_log_lines]):
-            safe = raw.replace("]]>", "]]]]><![CDATA[>")
+            safe = _safe_cdata(raw)
             lines.append(f'    <log index="{i + 1}"><![CDATA[{safe}]]></log>')
         lines.append("  </logs>")
 
@@ -266,7 +271,7 @@ def _render_page_context_xml(
         else:
             attr = ""
             content = ctx.vrl
-        safe_vrl = content.replace("]]>", "]]]]><![CDATA[>")
+        safe_vrl = _safe_cdata(content)
         lines.append(f"  <current_vrl{attr}>")
         lines.append(f"    <![CDATA[{safe_vrl}]]>")
         lines.append("  </current_vrl>")
@@ -290,12 +295,136 @@ def _render_page_context_xml(
     return "\n".join(lines)
 
 
+def _render_library_overview_xml(ctx, *, max_products: int) -> str:
+    """Render LibraryOverviewPageContext as XML."""
+    lines = ['<page_context page="library_overview">']
+    lines.append("  <facts>")
+
+    # filters renders only non-None values; quoteattr handles quotes safely
+    filter_attrs = " ".join(
+        f"{k}={quoteattr(v)}"
+        for k, v in (ctx.filters or {}).items()
+        if v is not None
+    )
+    if filter_attrs:
+        lines.append(f"    <filters {filter_attrs}/>")
+    else:
+        lines.append("    <filters/>")
+
+    lines.append(f"    <vendor_count>{ctx.vendor_count}</vendor_count>")
+    lines.append(f"    <product_count>{ctx.product_count}</product_count>")
+    lines.append("  </facts>")
+
+    missing = ctx.products_missing_parse_rule or []
+    showing = min(len(missing), max_products)
+    lines.append(
+        f'  <products_missing_parse_rule count="{len(missing)}" showing="{showing}">'
+    )
+    for slug in missing[:max_products]:
+        lines.append(f"    <product slug={quoteattr(slug)}/>")
+    lines.append("  </products_missing_parse_rule>")
+
+    lines.append("</page_context>")
+    return "\n".join(lines)
+
+
+def _render_library_product_xml(ctx, *, max_vrl_chars: int) -> str:
+    """Render LibraryProductPageContext as XML."""
+    lines = ['<page_context page="library_product">']
+    lines.append("  <facts>")
+    lines.append(f"    <vendor_slug>{ctx.vendor_slug}</vendor_slug>")
+    lines.append(f"    <product_slug>{ctx.product_slug}</product_slug>")
+    lines.append(f"    <product_status>{ctx.product_status}</product_status>")
+    lines.append("  </facts>")
+
+    if ctx.active_log_type is not None:
+        alt = ctx.active_log_type
+        lines.append(f"  <active_log_type name={quoteattr(alt.name)}>")
+        lines.append(f'    <fields count="{len(alt.fields)}">')
+        for f in alt.fields:
+            lines.append(
+                f"      <field name={quoteattr(f.name)} type={quoteattr(f.type)} "
+                f'required="{str(f.required).lower()}"/>'
+            )
+        lines.append("    </fields>")
+        lines.append(f"    <samples_count>{alt.samples_count}</samples_count>")
+        if alt.parse_rule_head:
+            head = alt.parse_rule_head
+            if len(head) > max_vrl_chars:
+                attr = f' truncated_to="{max_vrl_chars}"'
+                head = head[:max_vrl_chars]
+            else:
+                attr = ""
+            lines.append(f"    <parse_rule_head{attr}>")
+            lines.append(f"      <![CDATA[{_safe_cdata(head)}]]>")
+            lines.append("    </parse_rule_head>")
+        lines.append("  </active_log_type>")
+
+    lines.append("</page_context>")
+    return "\n".join(lines)
+
+
+def _render_library_versions_xml(ctx, *, max_vrl_chars: int) -> str:
+    """Render LibraryVersionsPageContext as XML."""
+    lines = ['<page_context page="library_versions">']
+    lines.append("  <facts>")
+    lines.append(f"    <vendor_slug>{ctx.vendor_slug}</vendor_slug>")
+    lines.append(f"    <product_slug>{ctx.product_slug}</product_slug>")
+    lines.append(f"    <log_type_name>{ctx.log_type_name}</log_type_name>")
+    lines.append("  </facts>")
+
+    if ctx.diff is not None:
+        d = ctx.diff
+        lines.append(
+            f"  <diff base_version={quoteattr(d.base_version)} "
+            f"head_version={quoteattr(d.head_version)}>"
+        )
+        for label, body in (("base_vrl", d.base_vrl), ("head_vrl", d.head_vrl)):
+            if body is None:
+                continue
+            if len(body) > max_vrl_chars:
+                attr = f' truncated_to="{max_vrl_chars}"'
+                body = body[:max_vrl_chars]
+            else:
+                attr = ""
+            lines.append(f"    <{label}{attr}>")
+            lines.append(f"      <![CDATA[{_safe_cdata(body)}]]>")
+            lines.append(f"    </{label}>")
+        lines.append("  </diff>")
+
+    lines.append("</page_context>")
+    return "\n".join(lines)
+
+
+def _render_page_context_xml(
+    ctx: PageContext,
+    *,
+    max_log_lines: int,
+    max_vrl_chars: int,
+    max_library_products: int,
+) -> str:
+    """Dispatch PageContext to the appropriate per-page renderer."""
+    page = ctx.page
+    if page == "analyzer":
+        return _render_analyzer_xml(
+            ctx, max_log_lines=max_log_lines, max_vrl_chars=max_vrl_chars,
+        )
+    if page == "library_overview":
+        return _render_library_overview_xml(ctx, max_products=max_library_products)
+    if page == "library_product":
+        return _render_library_product_xml(ctx, max_vrl_chars=max_vrl_chars)
+    if page == "library_versions":
+        return _render_library_versions_xml(ctx, max_vrl_chars=max_vrl_chars)
+    raise ValueError(f"unknown page: {page}")
+
+
 def build_system_blocks(
     *,
     skill: str | None,
     page_context: PageContext | None,
     max_log_lines: int,
     max_vrl_chars: int,
+    max_library_products: int,
 ) -> list[dict]:
     """Return Anthropic `system` parameter as a list of TextBlockParam dicts.
 
@@ -317,6 +446,7 @@ def build_system_blocks(
                     page_context,
                     max_log_lines=max_log_lines,
                     max_vrl_chars=max_vrl_chars,
+                    max_library_products=max_library_products,
                 ),
             }
         )

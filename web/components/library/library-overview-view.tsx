@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { type OverviewFilters, useLibraryOverview } from "@/lib/api/queries/library";
+import { useLibraryOverviewCopilotContext } from "@/lib/copilot/hooks/use-library-overview-context";
 
 type Props = { initialFilters: OverviewFilters };
 
@@ -28,6 +29,24 @@ export function LibraryOverviewView({ initialFilters }: Props) {
     isLoading: boolean;
     error: Error | null;
   };
+
+  const groupsForCopilot = (groups ?? []).map((g) => ({
+    vendor: { slug: g.vendor.slug },
+    products: g.products.map((p) => ({
+      slug: p.slug,
+      isEmpty: p.is_empty,
+      logTypeCounts: {
+        total: p.log_type_counts.total,
+        published: p.log_type_counts.published,
+        draft: p.log_type_counts.draft,
+      },
+    })),
+  }));
+
+  useLibraryOverviewCopilotContext({
+    filters: { status: filters.status ?? null, q: filters.q ?? null },
+    groups: groupsForCopilot,
+  });
 
   // Tasks 15-16 will add FilterSidebar + AddVendorDialog/AddProductDialog
   // For now: search box + new vendor button calls a stub; task 16 wires real dialog.

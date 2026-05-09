@@ -10,6 +10,7 @@ import { VersionsTab } from "@/components/library/versions-tab";
 import { VrlDisplay } from "@/components/library/vrl-display";
 import { Badge } from "@/components/ui/badge";
 import type { components } from "@/lib/api/types";
+import { useProductDetailCopilotContext } from "@/lib/copilot/hooks/use-product-detail-context";
 import { cn } from "@/lib/utils";
 
 type ProductDetail = components["schemas"]["ProductDetail"];
@@ -27,6 +28,29 @@ export function ProductDetailView({ vendorSlug, detail }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
   const [subTab, setSubTab] = useState<SubTab>("overview");
   const activeLogType = detail.log_types[activeIdx];
+
+  useProductDetailCopilotContext({
+    vendorSlug,
+    productSlug: detail.slug,
+    productStatus: detail.status,
+    activeLogType: activeLogType
+      ? {
+          name: activeLogType.name,
+          fields: activeLogType.fields.map((f) => ({
+            name: f.field_name,
+            type: f.field_type,
+            required: f.is_required,
+          })),
+          samplesCount: activeLogType.samples.length,
+          // VersionDiffModal isn't wired into VersionsTab in production yet,
+          // and ParseRule head text isn't surfaced on ProductDetail; pass null
+          // here. When the diff modal is connected, replace with the real value.
+          parseRuleHead: null,
+        }
+      : null,
+    subTab,
+    openDiff: null,
+  });
 
   const initials = vendorSlug.slice(0, 2).toUpperCase();
 

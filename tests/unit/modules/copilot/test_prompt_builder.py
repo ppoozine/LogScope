@@ -42,7 +42,7 @@ class TestBuildBlock1:
 
 class TestRenderPageContextXml:
     def _ctx(self, **kwargs):
-        from app.modules.copilot.schemas import PageContext
+        from app.modules.copilot.schemas import AnalyzerPageContext
         defaults = {
             "page": "analyzer",
             "vrl": None,
@@ -52,7 +52,7 @@ class TestRenderPageContextXml:
             "match_top_candidate": None,
         }
         defaults.update(kwargs)
-        return PageContext(**defaults)
+        return AnalyzerPageContext(**defaults)
 
     def test_minimal_context_only_facts(self):
         from app.modules.copilot.services.prompt_builder import _render_page_context_xml
@@ -61,6 +61,7 @@ class TestRenderPageContextXml:
             self._ctx(),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert '<page_context page="analyzer">' in xml
@@ -77,6 +78,7 @@ class TestRenderPageContextXml:
             self._ctx(logs=["raw <log> with & ents"]),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert "<![CDATA[raw <log> with & ents]]>" in xml
@@ -90,6 +92,7 @@ class TestRenderPageContextXml:
             self._ctx(logs=logs),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert '<logs count="30" showing="20">' in xml
@@ -108,7 +111,7 @@ class TestRenderPageContextXml:
                 "confidence": 0.94,
             }
         )
-        xml = _render_page_context_xml(ctx, max_log_lines=20, max_vrl_chars=4000)
+        xml = _render_page_context_xml(ctx, max_log_lines=20, max_vrl_chars=4000, max_library_products=20)
 
         assert 'source="MatchBar"' in xml
         assert 'vendor="paloalto"' in xml
@@ -124,6 +127,7 @@ class TestRenderPageContextXml:
             self._ctx(vrl=long_vrl, vrl_engine="v0.32"),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert '<current_vrl truncated_to="4000">' in xml
@@ -139,6 +143,7 @@ class TestRenderPageContextXml:
             self._ctx(vrl=". = .message"),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert "<current_vrl>" in xml          # no truncated_to attribute
@@ -158,6 +163,7 @@ class TestRenderPageContextXml:
             ),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         # Backend ParseResultItem.index is 0-based; renderer adds +1 so the
@@ -184,6 +190,7 @@ class TestRenderPageContextXml:
             self._ctx(logs=["payload before ]]> after"]),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         # The escape splits CDATA at the boundary so the LLM sees the literal `]]>` byte
@@ -199,6 +206,7 @@ class TestRenderPageContextXml:
             self._ctx(vrl=".x = parse(.) ?? \"]]>\""),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert "]]]]><![CDATA[>" in xml
@@ -214,6 +222,7 @@ class TestBuildSystemBlocks:
             page_context=None,
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert len(blocks) == 1
@@ -222,15 +231,16 @@ class TestBuildSystemBlocks:
         assert "Skill: log_explain" in blocks[0]["text"]
 
     def test_with_page_context_returns_two_blocks(self):
-        from app.modules.copilot.schemas import PageContext
+        from app.modules.copilot.schemas import AnalyzerPageContext
         from app.modules.copilot.services.prompt_builder import build_system_blocks
 
-        ctx = PageContext(page="analyzer", logs=["a"])
+        ctx = AnalyzerPageContext(page="analyzer", logs=["a"])
         blocks = build_system_blocks(
             skill="log_explain",
             page_context=ctx,
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert len(blocks) == 2
@@ -248,6 +258,7 @@ class TestBuildSystemBlocks:
             page_context=None,
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert len(blocks) == 1
@@ -263,6 +274,7 @@ class TestVrlGenerateBlock:
             page_context=None,
             max_log_lines=10,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
         text = blocks[0]["text"]
         # 含 persona 段
@@ -278,7 +290,7 @@ class TestVrlGenerateBlock:
         from app.modules.copilot.services.prompt_builder import build_system_blocks
         blocks = build_system_blocks(
             skill="vrl_generate", page_context=None,
-            max_log_lines=10, max_vrl_chars=4000,
+            max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
         )
         text = blocks[0]["text"]
         assert "Skill: log_explain" not in text
@@ -290,7 +302,7 @@ class TestVrlGenerateBlock:
         from app.modules.copilot.services.prompt_builder import build_system_blocks
         blocks = build_system_blocks(
             skill="vrl_generate", page_context=None,
-            max_log_lines=10, max_vrl_chars=4000,
+            max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
         )
         text = blocks[0]["text"]
         # Core parse functions
@@ -309,10 +321,335 @@ class TestVrlGenerateBlock:
         from app.modules.copilot.services.prompt_builder import build_system_blocks
         blocks = build_system_blocks(
             skill="vrl_generate", page_context=None,
-            max_log_lines=10, max_vrl_chars=4000,
+            max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
         )
         text = blocks[0]["text"]
         assert "Example A" in text
         assert "Example B" in text
         # Each example has its own ```vrl block
         assert text.count("```vrl") >= 2
+
+
+class TestPageContextDispatch:
+    def test_library_overview_routes_to_renderer(self):
+        from app.modules.copilot.schemas import LibraryOverviewPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = LibraryOverviewPageContext(
+            page="library_overview",
+            filters={},
+            vendor_count=1,
+            product_count=2,
+            products_missing_parse_rule=[],
+        )
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="library_overview">' in xml
+
+    def test_library_product_routes_to_renderer(self):
+        from app.modules.copilot.schemas import LibraryProductPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = LibraryProductPageContext(
+            page="library_product",
+            vendor_slug="v",
+            product_slug="p",
+            product_status="active",
+        )
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="library_product">' in xml
+
+    def test_library_versions_routes_to_renderer(self):
+        from app.modules.copilot.schemas import LibraryVersionsPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = LibraryVersionsPageContext(
+            page="library_versions",
+            vendor_slug="v",
+            product_slug="p",
+            log_type_name="t",
+        )
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="library_versions">' in xml
+
+    def test_analyzer_still_works_after_extraction(self):
+        from app.modules.copilot.schemas import AnalyzerPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = AnalyzerPageContext(page="analyzer", logs=["a", "b"])
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="analyzer">' in xml
+        assert '<log index="1">' in xml
+        assert '<log index="2">' in xml
+
+
+class TestLibraryOverviewXml:
+    def _ctx(self, **kw):
+        from app.modules.copilot.schemas import LibraryOverviewPageContext
+        defaults = {
+            "page": "library_overview",
+            "filters": {"status": "published", "q": "palo"},
+            "vendor_count": 12,
+            "product_count": 34,
+            "products_missing_parse_rule": [
+                "paloalto/panorama",
+                "cisco/ftd",
+            ],
+        }
+        defaults.update(kw)
+        return LibraryOverviewPageContext(**defaults)
+
+    def test_basic_xml(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml = _render_library_overview_xml(self._ctx(), max_products=20)
+        assert '<page_context page="library_overview">' in xml
+        assert "<vendor_count>12</vendor_count>" in xml
+        assert "<product_count>34</product_count>" in xml
+        assert "paloalto/panorama" in xml
+        assert "cisco/ftd" in xml
+
+    def test_truncates_to_max_products(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        ctx = self._ctx(products_missing_parse_rule=[f"v/p{i}" for i in range(30)])
+        xml = _render_library_overview_xml(ctx, max_products=5)
+        # `showing` reflects how many entries are actually rendered, `count`
+        # the original total
+        assert 'showing="5"' in xml
+        assert 'count="30"' in xml
+        assert "v/p0" in xml
+        assert "v/p4" in xml
+        assert "v/p5" not in xml
+
+    def test_empty_missing_list(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml = _render_library_overview_xml(
+            self._ctx(products_missing_parse_rule=[]),
+            max_products=20,
+        )
+        assert 'count="0"' in xml
+        assert 'showing="0"' in xml
+
+    def test_filters_attribute_with_quote_characters(self):
+        """quoteattr handles embedded quotes safely."""
+        import xml.etree.ElementTree as ET
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml_str = _render_library_overview_xml(
+            self._ctx(filters={"q": 'has "quote"', "status": None}),
+            max_products=20,
+        )
+        # Result should be valid XML even with the embedded `"`
+        root = ET.fromstring(xml_str)
+        filters_el = root.find(".//filters")
+        assert filters_el is not None
+        # status=None is skipped, only q renders
+        assert filters_el.get("q") == 'has "quote"'
+        assert filters_el.get("status") is None
+
+    def test_filters_omitted_when_none_or_empty(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml = _render_library_overview_xml(
+            self._ctx(filters={}),
+            max_products=20,
+        )
+        # Empty filters renders an empty <filters/> element
+        assert "<filters/>" in xml or "<filters />" in xml
+
+
+class TestLibraryProductXml:
+    def _ctx(self, active_log_type=None):
+        from app.modules.copilot.schemas import LibraryProductPageContext
+        return LibraryProductPageContext(
+            page="library_product",
+            vendor_slug="paloalto",
+            product_slug="pan-os",
+            product_status="active",
+            active_log_type=active_log_type,
+        )
+
+    def test_no_active_log_type(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        xml = _render_library_product_xml(self._ctx(), max_vrl_chars=4000)
+        assert "<vendor_slug>paloalto</vendor_slug>" in xml
+        assert "<product_slug>pan-os</product_slug>" in xml
+        assert "<product_status>active</product_status>" in xml
+        # active_log_type element is omitted entirely when None
+        assert "<active_log_type" not in xml
+
+    def test_with_active_log_type(self):
+        from app.modules.copilot.schemas import ActiveLogTypeContext, FieldSummary
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(
+            name="traffic",
+            fields=[
+                FieldSummary(name="src_ip", type="string", required=True),
+                FieldSummary(name="dst_port", type="integer", required=False),
+            ],
+            samples_count=23,
+            parse_rule_head=". = parse_syslog!(.message)",
+        )
+        xml = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        assert '<active_log_type name="traffic">' in xml
+        assert '<fields count="2">' in xml
+        assert '<field name="src_ip" type="string" required="true"/>' in xml
+        assert '<field name="dst_port" type="integer" required="false"/>' in xml
+        assert "<samples_count>23</samples_count>" in xml
+        assert "parse_syslog" in xml
+
+    def test_active_log_type_no_parse_rule_head(self):
+        from app.modules.copilot.schemas import ActiveLogTypeContext
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(name="t", fields=[], samples_count=0, parse_rule_head=None)
+        xml = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        assert '<active_log_type name="t">' in xml
+        # parse_rule_head element omitted when None
+        assert "<parse_rule_head" not in xml
+
+    def test_parse_rule_head_truncated(self):
+        from app.modules.copilot.schemas import ActiveLogTypeContext
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        long_rule = "x" * 10000
+        alt = ActiveLogTypeContext(name="t", parse_rule_head=long_rule)
+        xml = _render_library_product_xml(
+            self._ctx(active_log_type=alt), max_vrl_chars=100,
+        )
+        # truncated_to attribute appears with the cap value
+        assert 'truncated_to="100"' in xml
+        # Truncated content present
+        assert "x" * 100 in xml
+        # Original full rule NOT in output
+        assert "x" * 200 not in xml
+
+    def test_parse_rule_head_with_cdata_terminator_escaped(self):
+        """`]]>` inside parse_rule_head must be escaped via _safe_cdata."""
+        from app.modules.copilot.schemas import ActiveLogTypeContext
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(
+            name="t", parse_rule_head='. = parse_json(.) ?? "]]>"',
+        )
+        xml = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        # _safe_cdata splits the CDATA boundary
+        assert "]]]]><![CDATA[>" in xml
+        # Balanced CDATA opens/closes
+        assert xml.count("<![CDATA[") == xml.count("]]>")
+
+    def test_field_attributes_use_quoteattr(self):
+        """Field names with quotes shouldn't break XML."""
+        import xml.etree.ElementTree as ET
+        from app.modules.copilot.schemas import ActiveLogTypeContext, FieldSummary
+        from app.modules.copilot.services.prompt_builder import _render_library_product_xml
+        alt = ActiveLogTypeContext(
+            name='log "type"',  # name with quotes
+            fields=[FieldSummary(name='field "x"', type="string", required=True)],
+        )
+        xml_str = _render_library_product_xml(self._ctx(active_log_type=alt), max_vrl_chars=4000)
+        # Resulting XML must be parsable
+        root = ET.fromstring(xml_str)
+        alt_el = root.find(".//active_log_type")
+        assert alt_el is not None
+        assert alt_el.get("name") == 'log "type"'
+        field_el = root.find(".//field")
+        assert field_el is not None
+        assert field_el.get("name") == 'field "x"'
+
+
+class TestLibraryVersionsXml:
+    def _ctx(self, diff=None):
+        from app.modules.copilot.schemas import LibraryVersionsPageContext
+        return LibraryVersionsPageContext(
+            page="library_versions",
+            vendor_slug="paloalto",
+            product_slug="pan-os",
+            log_type_name="traffic",
+            diff=diff,
+        )
+
+    def test_no_diff(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        xml = _render_library_versions_xml(self._ctx(), max_vrl_chars=4000)
+        assert '<page_context page="library_versions">' in xml
+        assert "<vendor_slug>paloalto</vendor_slug>" in xml
+        assert "<product_slug>pan-os</product_slug>" in xml
+        assert "<log_type_name>traffic</log_type_name>" in xml
+        # diff element entirely omitted when None
+        assert "<diff" not in xml
+
+    def test_with_diff(self):
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version="v3", head_version="v4",
+            base_vrl="old vrl content",
+            head_vrl="new vrl content",
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        assert 'base_version="v3"' in xml
+        assert 'head_version="v4"' in xml
+        assert "<base_vrl>" in xml
+        assert "<head_vrl>" in xml
+        assert "old vrl content" in xml
+        assert "new vrl content" in xml
+
+    def test_diff_with_only_head_vrl(self):
+        """base_vrl=None should omit only the base_vrl element, head_vrl still rendered."""
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version="v3", head_version="v4",
+            base_vrl=None,
+            head_vrl="new only",
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        assert "<base_vrl" not in xml
+        assert "<head_vrl>" in xml
+        assert "new only" in xml
+
+    def test_vrl_truncated(self):
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        long = "y" * 8000
+        diff = VersionDiffContext(
+            base_version="v1", head_version="v2",
+            base_vrl=long, head_vrl="short",
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=200)
+        # base_vrl truncated; head_vrl not
+        assert '<base_vrl truncated_to="200">' in xml
+        assert "y" * 200 in xml
+        assert "y" * 400 not in xml
+        # head_vrl renders without truncated_to attribute
+        assert "<head_vrl>" in xml
+
+    def test_vrl_with_cdata_terminator_escaped(self):
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version="v1", head_version="v2",
+            base_vrl='. = parse_json(.) ?? "]]>"',
+            head_vrl=None,
+        )
+        xml = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        assert "]]]]><![CDATA[>" in xml
+        assert xml.count("<![CDATA[") == xml.count("]]>")
+
+    def test_diff_attributes_use_quoteattr(self):
+        """Version strings with quotes shouldn't break XML."""
+        import xml.etree.ElementTree as ET
+        from app.modules.copilot.schemas import VersionDiffContext
+        from app.modules.copilot.services.prompt_builder import _render_library_versions_xml
+        diff = VersionDiffContext(
+            base_version='v"1', head_version='v"2',
+            base_vrl=None, head_vrl=None,
+        )
+        xml_str = _render_library_versions_xml(self._ctx(diff=diff), max_vrl_chars=4000)
+        root = ET.fromstring(xml_str)
+        diff_el = root.find(".//diff")
+        assert diff_el is not None
+        assert diff_el.get("base_version") == 'v"1'
+        assert diff_el.get("head_version") == 'v"2'

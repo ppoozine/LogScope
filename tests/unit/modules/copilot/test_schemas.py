@@ -6,7 +6,6 @@ from pydantic import ValidationError
 from app.modules.copilot.schemas import (
     ChatMessage,
     ChatRequest,
-    PageContext,
 )
 
 
@@ -72,7 +71,9 @@ class TestChatRequest:
 
 class TestPageContext:
     def test_minimal_analyzer_context(self):
-        ctx = PageContext(page="analyzer")
+        from app.modules.copilot.schemas import AnalyzerPageContext
+
+        ctx = AnalyzerPageContext(page="analyzer")
         assert ctx.page == "analyzer"
         assert ctx.vrl is None
         assert ctx.logs == []
@@ -80,7 +81,9 @@ class TestPageContext:
         assert ctx.match_top_candidate is None
 
     def test_full_analyzer_context(self):
-        ctx = PageContext.model_validate(
+        from app.modules.copilot.schemas import AnalyzerPageContext
+
+        ctx = AnalyzerPageContext.model_validate(
             {
                 "page": "analyzer",
                 "vrl": ". = parse_syslog!(.message)",
@@ -105,4 +108,87 @@ class TestPageContext:
 
     def test_invalid_page_rejected(self):
         with pytest.raises(ValidationError):
-            PageContext.model_validate({"page": "library"})  # D1 only supports analyzer
+            ChatRequest(
+                messages=[{"role": "user", "content": "hi"}],
+                page_context={"page": "library"},  # not in 4 literals
+            )
+
+
+class TestDiscriminatedPageContext:
+    def test_analyzer_page_context_still_works(self):
+        from app.modules.copilot.schemas import ChatRequest
+
+        r = ChatRequest(
+            messages=[{"role": "user", "content": "hi"}],
+            page_context={"page": "analyzer", "logs": ["a"]},
+        )
+        assert r.page_context.page == "analyzer"
+
+    def test_library_overview_page_context(self):
+        from app.modules.copilot.schemas import ChatRequest
+
+        r = ChatRequest(
+            messages=[{"role": "user", "content": "hi"}],
+            page_context={
+                "page": "library_overview",
+                "filters": {"status": "published", "q": None},
+                "vendor_count": 5,
+                "product_count": 12,
+                "products_missing_parse_rule": ["paloalto/panorama"],
+            },
+        )
+        assert r.page_context.vendor_count == 5
+
+    def test_library_overview_missing_required_field(self):
+        with pytest.raises(ValidationError):
+            ChatRequest(
+                messages=[{"role": "user", "content": "hi"}],
+                page_context={"page": "library_overview"},  # missing vendor_count etc.
+            )
+
+    def test_library_product_page_context(self):
+        from app.modules.copilot.schemas import ChatRequest
+
+        r = ChatRequest(
+            messages=[{"role": "user", "content": "hi"}],
+            page_context={
+                "page": "library_product",
+                "vendor_slug": "paloalto",
+                "product_slug": "pan-os",
+                "product_status": "active",
+                "active_log_type": {
+                    "name": "traffic",
+                    "fields": [{"name": "src_ip", "type": "string", "required": True}],
+                    "samples_count": 5,
+                    "parse_rule_head": ". = parse_syslog!(.message)",
+                },
+            },
+        )
+        assert r.page_context.active_log_type.name == "traffic"
+
+    def test_library_versions_page_context(self):
+        from app.modules.copilot.schemas import ChatRequest
+
+        r = ChatRequest(
+            messages=[{"role": "user", "content": "hi"}],
+            page_context={
+                "page": "library_versions",
+                "vendor_slug": "paloalto",
+                "product_slug": "pan-os",
+                "log_type_name": "traffic",
+                "diff": {
+                    "base_version": "v3",
+                    "head_version": "v4",
+                    "base_vrl": "old",
+                    "head_vrl": "new",
+                },
+            },
+        )
+        assert r.page_context.diff.head_version == "v4"
+
+    def test_unknown_page_rejected(self):
+        with pytest.raises(ValidationError):
+            ChatRequest(
+                messages=[{"role": "user", "content": "hi"}],
+                page_context={"page": "library"},  # not in 4 literals
+            )

@@ -2,7 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 
-import { useStreamingChat } from "@/lib/copilot/hooks/use-streaming-chat";
+import { toBackendPageContext, useStreamingChat } from "@/lib/copilot/hooks/use-streaming-chat";
 import { useCopilotStore } from "@/lib/copilot/store";
 import { server } from "@/test/msw/server";
 
@@ -157,5 +157,133 @@ describe("useStreamingChat", () => {
       expect(useCopilotStore.getState().isStreaming).toBe(false);
     });
     expect(useCopilotStore.getState().lastSkill).toBe("log_explain");
+  });
+});
+
+describe("toBackendPageContext", () => {
+  it("converts analyzer ctx to snake_case backend shape", () => {
+    const r = toBackendPageContext({
+      page: "analyzer",
+      vrl: ". = .",
+      vrlEngine: "0.32",
+      logs: ["a"],
+      parseResults: [{ index: 0, status: "ok" }],
+      matchTopCandidate: {
+        vendorSlug: "v",
+        productSlug: "p",
+        logTypeName: "t",
+        confidence: 0.9,
+      },
+    });
+    expect(r).toEqual({
+      page: "analyzer",
+      vrl: ". = .",
+      vrl_engine: "0.32",
+      logs: ["a"],
+      parse_results: [{ index: 0, status: "ok" }],
+      match_top_candidate: {
+        vendor_slug: "v",
+        product_slug: "p",
+        log_type_name: "t",
+        confidence: 0.9,
+      },
+    });
+  });
+
+  it("converts library_overview ctx", () => {
+    const r = toBackendPageContext({
+      page: "library_overview",
+      filters: { status: "published", q: undefined },
+      vendorCount: 5,
+      productCount: 12,
+      productsMissingParseRule: ["v/p"],
+    });
+    expect(r).toMatchObject({
+      page: "library_overview",
+      vendor_count: 5,
+      product_count: 12,
+      products_missing_parse_rule: ["v/p"],
+    });
+  });
+
+  it("converts library_product ctx with active log type", () => {
+    const r = toBackendPageContext({
+      page: "library_product",
+      vendorSlug: "v",
+      productSlug: "p",
+      productStatus: "active",
+      activeLogType: {
+        name: "traffic",
+        fields: [{ name: "src_ip", type: "string", required: true }],
+        samplesCount: 5,
+        parseRuleHead: ". = parse_syslog!(.message)",
+      },
+    });
+    expect(r).toMatchObject({
+      page: "library_product",
+      vendor_slug: "v",
+      product_slug: "p",
+      product_status: "active",
+      active_log_type: {
+        name: "traffic",
+        samples_count: 5,
+        parse_rule_head: ". = parse_syslog!(.message)",
+      },
+    });
+  });
+
+  it("converts library_product ctx with null active log type", () => {
+    const r = toBackendPageContext({
+      page: "library_product",
+      vendorSlug: "v",
+      productSlug: "p",
+      productStatus: "active",
+      activeLogType: null,
+    });
+    expect(r).toMatchObject({
+      page: "library_product",
+      active_log_type: null,
+    });
+  });
+
+  it("converts library_versions ctx with diff", () => {
+    const r = toBackendPageContext({
+      page: "library_versions",
+      vendorSlug: "v",
+      productSlug: "p",
+      logTypeName: "t",
+      diff: {
+        baseVersion: "v3",
+        headVersion: "v4",
+        baseVrl: "old",
+        headVrl: "new",
+      },
+    });
+    expect(r).toMatchObject({
+      page: "library_versions",
+      vendor_slug: "v",
+      product_slug: "p",
+      log_type_name: "t",
+      diff: {
+        base_version: "v3",
+        head_version: "v4",
+        base_vrl: "old",
+        head_vrl: "new",
+      },
+    });
+  });
+
+  it("converts library_versions ctx with no diff", () => {
+    const r = toBackendPageContext({
+      page: "library_versions",
+      vendorSlug: "v",
+      productSlug: "p",
+      logTypeName: "t",
+      diff: null,
+    });
+    expect(r).toMatchObject({
+      page: "library_versions",
+      diff: null,
+    });
   });
 });
