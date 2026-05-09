@@ -94,4 +94,74 @@ describe("useStreamingChat", () => {
     // Assert: nothing got appended
     expect(useCopilotStore.getState().messages).toHaveLength(0);
   });
+
+  it("send accepts an explicit skill option and updates lastSkill", async () => {
+    // Arrange
+    resetStore();
+    server.use(
+      http.post("/api/v1/copilot/chat", () =>
+        sseResponse([
+          'event: text_delta\ndata: {"text":"ok"}\n\n',
+          "event: done\ndata: {}\n\n",
+        ]),
+      ),
+    );
+    const { result } = renderHook(() => useStreamingChat());
+    useCopilotStore.setState({
+      pageContext: {
+        page: "analyzer",
+        vrl: "x",
+        vrlEngine: null,
+        logs: ["a"],
+        parseResults: [],
+        matchTopCandidate: null,
+      },
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.send("生成 VRL", { skill: "vrl_generate" });
+    });
+
+    // Assert
+    await waitFor(() => {
+      expect(useCopilotStore.getState().isStreaming).toBe(false);
+    });
+    expect(useCopilotStore.getState().lastSkill).toBe("vrl_generate");
+  });
+
+  it("send falls back to log_explain when no explicit skill given on analyzer page", async () => {
+    // Arrange
+    resetStore();
+    server.use(
+      http.post("/api/v1/copilot/chat", () =>
+        sseResponse([
+          'event: text_delta\ndata: {"text":"ok"}\n\n',
+          "event: done\ndata: {}\n\n",
+        ]),
+      ),
+    );
+    const { result } = renderHook(() => useStreamingChat());
+    useCopilotStore.setState({
+      pageContext: {
+        page: "analyzer",
+        vrl: null,
+        vrlEngine: null,
+        logs: ["a"],
+        parseResults: [],
+        matchTopCandidate: null,
+      },
+    });
+
+    // Act
+    await act(async () => {
+      await result.current.send("hi");
+    });
+
+    // Assert
+    await waitFor(() => {
+      expect(useCopilotStore.getState().isStreaming).toBe(false);
+    });
+    expect(useCopilotStore.getState().lastSkill).toBe("log_explain");
+  });
 });

@@ -4,7 +4,13 @@ import { useCallback } from "react";
 
 import { streamChat } from "@/lib/copilot/sse-client";
 import { useCopilotStore } from "@/lib/copilot/store";
-import type { BackendPageContext, ChatRequestBody, PageContext } from "@/lib/copilot/types";
+import type { BackendPageContext, ChatRequestBody, PageContext, SkillName } from "@/lib/copilot/types";
+
+function pickDefaultSkill(ctx: PageContext | null): SkillName | null {
+  if (!ctx) return null;
+  if (ctx.page !== "analyzer") return null;
+  return "log_explain";
+}
 
 function toBackendPageContext(ctx: PageContext): BackendPageContext {
   return {
@@ -29,12 +35,15 @@ function toBackendPageContext(ctx: PageContext): BackendPageContext {
 }
 
 export function useStreamingChat() {
-  const send = useCallback(async (text: string) => {
+  const send = useCallback(async (text: string, options?: { skill?: SkillName }) => {
     const state0 = useCopilotStore.getState();
     if (state0.isStreaming) return;
 
+    const ctx = state0.pageContext;
+    const skill: SkillName | null = options?.skill ?? pickDefaultSkill(ctx);
+
     // immediately mark streaming to block double-clicks
-    useCopilotStore.setState({ isStreaming: true });
+    useCopilotStore.setState({ isStreaming: true, lastSkill: skill });
 
     state0.appendUserMessage(text);
     const assistantId = state0.appendAssistantPlaceholder();
@@ -48,10 +57,9 @@ export function useStreamingChat() {
       .slice(0, -1)
       .map((m) => ({ role: m.role, content: m.content }));
 
-    const ctx = state0.pageContext;
     const body: ChatRequestBody = {
       messages: messagesForRequest,
-      skill: ctx ? "log_explain" : null,
+      skill,
       page_context: ctx ? toBackendPageContext(ctx) : null,
     };
 
