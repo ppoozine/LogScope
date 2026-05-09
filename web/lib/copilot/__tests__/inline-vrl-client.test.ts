@@ -31,7 +31,7 @@ describe("streamInlineVrl", () => {
 
   beforeEach(() => {
     fetchSpy = vi.fn();
-    globalThis.fetch = fetchSpy;
+    globalThis.fetch = fetchSpy as unknown as typeof fetch;
   });
 
   afterEach(() => {
