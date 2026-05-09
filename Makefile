@@ -6,7 +6,7 @@
         api web web-build \
         test test-int test-fe test-fe-e2e \
         lint lint-fe fmt typecheck typecheck-fe \
-        up down migrate revision \
+        up down dev-stats migrate revision \
         gen-api build-engines
 
 LOG_DIR := .runtime/logs
@@ -32,7 +32,8 @@ help:
 	@echo "  web         - foreground next dev only"
 	@echo ""
 	@echo "Docker:"
-	@echo "  up          - docker compose up -d"
+	@echo "  up          - docker compose up -d (postgres + redis only)"
+	@echo "  dev-stats   - docker compose --profile stats up -d clickhouse (Stats feature)"
 	@echo "  down        - docker compose down"
 	@echo "  logs        - docker compose logs -f"
 	@echo ""
@@ -93,7 +94,7 @@ dev: up migrate
 $(LOG_DIR):
 	@mkdir -p $(LOG_DIR)
 
-dev-all: up migrate dev-be dev-fe
+dev-all: up dev-stats migrate dev-be dev-fe
 	@echo ""
 	@echo "🚀 LogScope dev stack running (background)"
 	@echo "  Backend:  http://localhost:8000/healthz   (docs: /docs)"
@@ -191,8 +192,12 @@ status:
 up:
 	docker compose up -d
 
+dev-stats:
+	docker compose --profile stats up -d clickhouse
+	@echo "ClickHouse on :8123 (CLICKHOUSE_URL in .env.example is enabled by default)"
+
 down:
-	docker compose down
+	docker compose --profile stats down
 
 logs:
 	docker compose logs -f

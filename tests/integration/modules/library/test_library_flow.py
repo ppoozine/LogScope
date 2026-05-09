@@ -112,12 +112,13 @@ class TestLibraryFlow:
         assert my_lt["current_parse_rule"]["status"] == "published"
         assert len(my_lt["samples"]) == 0  # sample 還沒加
 
-        # Act 7: re-publish should 409
+        # Act 7: re-publish is idempotent (T17 changed semantics — promote() is idempotent for published)
         r = await authenticated_client.post(
             f"/api/v1/library/log_types/{log_type['id']}/publish",
         )
         # Assert 7
-        assert r.status_code == 409
+        assert r.status_code == 200
+        assert r.json()["data"]["status"] == "published"
 
         # Act 8: add sample
         r = await authenticated_client.post(

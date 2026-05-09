@@ -82,3 +82,16 @@ async def update_parse_rule(
 ) -> DataResponse[ParseRuleRead]:
     rule = await service.update(rule_id, body)
     return DataResponse(data=ParseRuleRead.model_validate(rule))
+
+
+@router.post(
+    "/parse_rules/{rule_id}/promote",
+    response_model=DataResponse[ParseRuleRead],
+)
+async def promote_parse_rule(
+    rule_id: uuid.UUID,
+    service: Annotated[ParseRuleService, Depends(get_parse_rule_service)],
+    _user: Annotated[User, Depends(current_user)],
+) -> DataResponse[ParseRuleRead]:
+    rule = await service.promote(rule_id)
+    return DataResponse(data=ParseRuleRead.model_validate(rule))

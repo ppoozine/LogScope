@@ -35,3 +35,17 @@ class ParseRuleRepository:
         await self._session.flush()
         await self._session.refresh(rule)
         return rule
+
+    async def get_for_update(self, rule_id: uuid.UUID) -> ParseRule | None:
+        """SELECT ... FOR UPDATE — locks the row in current transaction."""
+        stmt = select(ParseRule).where(ParseRule.id == rule_id).with_for_update()
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()
+
+    async def get_current_published(self, log_type_id: uuid.UUID) -> ParseRule | None:
+        stmt = select(ParseRule).where(
+            ParseRule.log_type_id == log_type_id,
+            ParseRule.status == "published",
+        )
+        result = await self._session.execute(stmt)
+        return result.scalar_one_or_none()

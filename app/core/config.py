@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str | None = Field(default=None, alias="ANTHROPIC_API_KEY")
     llm_match_model: str = Field("claude-haiku-4-5-20251001", alias="LLM_MATCH_MODEL")
 
+    clickhouse_url: str | None = Field(default=None, alias="CLICKHOUSE_URL")
+
 
 _settings: Settings | None = None
 

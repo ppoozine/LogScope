@@ -17,7 +17,7 @@ LogFormat = Literal["syslog", "json", "cef", "leef", "csv", "other"]
 LogTransport = Literal["syslog_udp", "syslog_tcp", "http", "file", "other"]
 FieldType = Literal["string", "int", "float", "bool", "timestamp", "ip", "object", "array"]
 EngineVersion = Literal["0.25", "0.32"]
-ParseRuleStatus = Literal["draft", "published"]
+ParseRuleStatus = Literal["draft", "published", "archived"]
 SampleLabel = Literal["normal", "edge_case", "error"]
 
 
@@ -267,3 +267,55 @@ class OverviewVendor(BaseModel):
 class OverviewVendorGroup(BaseModel):
     vendor: OverviewVendor
     products: list[OverviewProduct]
+
+
+# =============================================================================
+# Stats / Coverage
+# =============================================================================
+
+StatsRange = Literal["7d", "14d", "30d", "90d"]
+
+
+class StatsRangeQuery(BaseModel):
+    range: StatsRange = "7d"
+
+
+class TimelinePoint(BaseModel):
+    day: str  # YYYY-MM-DD
+    total: int
+    success: int
+    error: int
+    success_rate: float  # 0..1
+
+
+class EngineUsage(BaseModel):
+    engine_version: EngineVersion
+    count: int
+
+
+class StatsTotals(BaseModel):
+    total: int
+    success: int
+    error: int
+    success_rate: float
+
+
+class LogTypeStats(BaseModel):
+    enabled: bool
+    range_days: int
+    timeline: list[TimelinePoint]
+    engine_usage: list[EngineUsage]
+    totals: StatsTotals
+
+
+class CoverageLogType(BaseModel):
+    log_type_id: uuid.UUID
+    sparkline: list[float]
+    success_rate_avg: float
+    volume: int
+
+
+class ProductCoverage(BaseModel):
+    enabled: bool
+    range_days: int
+    log_types: list[CoverageLogType]

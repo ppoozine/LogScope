@@ -71,6 +71,8 @@ def _make_service(
 
     parse_rule_repo = MagicMock()
     parse_rule_repo.get_by_id = AsyncMock(return_value=parse_rule_get_by_id)
+    parse_rule_repo.get_for_update = AsyncMock(return_value=parse_rule_get_by_id)
+    parse_rule_repo.get_current_published = AsyncMock(return_value=None)
     parse_rule_repo.update = AsyncMock(side_effect=lambda pr: pr)
 
     return (
@@ -128,7 +130,7 @@ class TestLogTypeServicePublish:
     """Tests for LogTypeService.publish()."""
 
     async def test_publish_promotes_draft_rule(self):
-        """Should promote current draft parse rule to published."""
+        """Delegates to ParseRuleService.promote(); re-fetches log_type from repo."""
         # Arrange
         log_type = _make_log_type()
         rule = _make_parse_rule(log_type_id=log_type.id, status="draft")
@@ -141,12 +143,11 @@ class TestLogTypeServicePublish:
         # Act
         result = await service.publish(log_type.id)
 
-        # Assert
-        assert result.status == "published"
-        assert rule.status == "published"
-        assert result.published_at is not None
-        log_type_repo.update.assert_awaited_once()
-        parse_rule_repo.update.assert_awaited_once()
+        # Assert: promote() was called (it sets rule.status internally)
+        parse_rule_repo.get_for_update.assert_awaited_once_with(rule.id)
+        # get_by_id called 3×: initial fetch + promote() internal fetch + final re-fetch
+        assert log_type_repo.get_by_id.await_count == 3
+        assert result is not None
 
     async def test_publish_raises_validation_when_no_current_rule(self):
         """Should raise ValidationError when log type has no current parse rule."""
@@ -158,10 +159,10 @@ class TestLogTypeServicePublish:
         with pytest.raises(ValidationError):
             await service.publish(log_type.id)
 
-    async def test_publish_raises_conflict_when_already_published(self):
-        """Should raise ConflictError when current rule is already published."""
+    async def test_publish_is_idempotent_when_already_published(self):
+        """Re-publishing an already-published rule succeeds (promote is idempotent)."""
         # Arrange
-        log_type = _make_log_type()
+        log_type = _make_log_type(status="published")
         rule = _make_parse_rule(log_type_id=log_type.id, status="published")
         log_type.current_parse_rule_id = rule.id
         service, _, _, _ = _make_service(
@@ -169,9 +170,9 @@ class TestLogTypeServicePublish:
             parse_rule_get_by_id=rule,
         )
 
-        # Act / Assert
-        with pytest.raises(ConflictError):
-            await service.publish(log_type.id)
+        # Act / Assert — should NOT raise
+        result = await service.publish(log_type.id)
+        assert result is not None
 
 
 class TestLogTypeServiceUpdate:

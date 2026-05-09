@@ -3,18 +3,29 @@
 import { useState } from "react";
 
 import { FieldTable } from "@/components/library/field-table";
+import { LogTypeStatsTab } from "@/components/library/log-type-stats-tab";
 import { LogTypeTabs } from "@/components/library/log-type-tabs";
 import { SampleList } from "@/components/library/sample-list";
+import { VersionsTab } from "@/components/library/versions-tab";
 import { VrlDisplay } from "@/components/library/vrl-display";
 import { Badge } from "@/components/ui/badge";
 import type { components } from "@/lib/api/types";
+import { cn } from "@/lib/utils";
 
 type ProductDetail = components["schemas"]["ProductDetail"];
+
+type SubTab = "overview" | "stats" | "versions";
+const SUB_TABS: { id: SubTab; label: string }[] = [
+  { id: "overview", label: "Overview" },
+  { id: "stats", label: "Stats" },
+  { id: "versions", label: "Versions" },
+];
 
 type Props = { vendorSlug: string; detail: ProductDetail };
 
 export function ProductDetailView({ vendorSlug, detail }: Props) {
   const [activeIdx, setActiveIdx] = useState(0);
+  const [subTab, setSubTab] = useState<SubTab>("overview");
   const activeLogType = detail.log_types[activeIdx];
 
   const initials = vendorSlug.slice(0, 2).toUpperCase();
@@ -55,14 +66,47 @@ export function ProductDetailView({ vendorSlug, detail }: Props) {
         </p>
       ) : (
         <>
-          <LogTypeTabs logTypes={detail.log_types} activeIdx={activeIdx} onChange={setActiveIdx} />
+          <LogTypeTabs
+            logTypes={detail.log_types}
+            activeIdx={activeIdx}
+            onChange={(i) => {
+              setActiveIdx(i);
+              setSubTab("overview");
+            }}
+          />
           {activeLogType && (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <FieldTable fields={activeLogType.fields} />
-              <SampleList samples={activeLogType.samples} logTypeId={activeLogType.id} />
-              <div className="lg:col-span-2">
-                <VrlDisplay rule={activeLogType.current_parse_rule} logTypeId={activeLogType.id} />
+            <div className="rounded-lg border bg-card">
+              <div className="flex gap-1 border-b px-3">
+                {SUB_TABS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setSubTab(t.id)}
+                    className={cn(
+                      "border-b-2 px-3 py-2 text-sm",
+                      subTab === t.id
+                        ? "border-purple-600 font-semibold"
+                        : "border-transparent text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {t.label}
+                  </button>
+                ))}
               </div>
+              {subTab === "overview" && (
+                <div className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-2">
+                  <FieldTable fields={activeLogType.fields} />
+                  <SampleList samples={activeLogType.samples} logTypeId={activeLogType.id} />
+                  <div className="lg:col-span-2">
+                    <VrlDisplay
+                      rule={activeLogType.current_parse_rule}
+                      logTypeId={activeLogType.id}
+                    />
+                  </div>
+                </div>
+              )}
+              {subTab === "stats" && <LogTypeStatsTab logTypeId={activeLogType.id} />}
+              {subTab === "versions" && <VersionsTab logTypeId={activeLogType.id} />}
             </div>
           )}
         </>

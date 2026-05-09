@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 
 from app.common.exceptions import ConflictError, NotFoundError
 from app.modules.library.models.parse_rule import ParseRule
@@ -51,6 +52,37 @@ class ParseRuleService:
         log_type.current_parse_rule_id = rule.id
         log_type.status = "draft"
         await self._log_types.update(log_type)
+
+        return rule
+
+    async def promote(self, rule_id: uuid.UUID) -> ParseRule:
+        """Make `rule_id` the published rule for its log_type.
+
+        Idempotent for already-published rules. Archives any prior published rule
+        on the same log_type. Refuses to promote archived rules.
+        """
+        rule = await self._rules.get_for_update(rule_id)
+        if rule is None:
+            raise NotFoundError(f"parse rule not found: {rule_id}")
+        if rule.status == "archived":
+            raise ConflictError("cannot promote archived rule")
+        if rule.status == "published":
+            return rule
+
+        previous = await self._rules.get_current_published(rule.log_type_id)
+        if previous is not None and previous.id != rule.id:
+            previous.status = "archived"
+            await self._rules.update(previous)
+
+        rule.status = "published"
+        await self._rules.update(rule)
+
+        log_type = await self._log_types.get_by_id(rule.log_type_id)
+        if log_type is not None:
+            log_type.current_parse_rule_id = rule.id
+            log_type.status = "published"
+            log_type.published_at = datetime.now(UTC)
+            await self._log_types.update(log_type)
 
         return rule
 
