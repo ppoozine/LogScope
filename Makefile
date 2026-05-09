@@ -32,7 +32,8 @@ help:
 	@echo "  web         - foreground next dev only"
 	@echo ""
 	@echo "Docker:"
-	@echo "  up          - docker compose up -d"
+	@echo "  up          - docker compose up -d (postgres + redis only)"
+	@echo "  dev-stats   - docker compose --profile stats up -d clickhouse (Stats feature)"
 	@echo "  down        - docker compose down"
 	@echo "  logs        - docker compose logs -f"
 	@echo ""
@@ -93,7 +94,7 @@ dev: up migrate
 $(LOG_DIR):
 	@mkdir -p $(LOG_DIR)
 
-dev-all: up migrate dev-be dev-fe
+dev-all: up dev-stats migrate dev-be dev-fe
 	@echo ""
 	@echo "🚀 LogScope dev stack running (background)"
 	@echo "  Backend:  http://localhost:8000/healthz   (docs: /docs)"
@@ -193,7 +194,7 @@ up:
 
 dev-stats:
 	docker compose --profile stats up -d clickhouse
-	@echo "ClickHouse on :8123 — set CLICKHOUSE_URL in .env to enable Stats"
+	@echo "ClickHouse on :8123 (CLICKHOUSE_URL in .env.example is enabled by default)"
 
 down:
 	docker compose down
