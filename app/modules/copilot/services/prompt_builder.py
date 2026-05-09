@@ -199,9 +199,75 @@ del(.ts)
 - `del(.ts)` 用 .timestamp 取代原欄位，保持 schema 一致
 """
 
+_BLOCK1_VRL_OPTIMIZE = """
+# Skill: vrl_optimize
+
+You are reviewing existing VRL for redundancy and reliability problems.
+
+## Process (follow in order)
+1. Read <current_vrl> and <parse_results>. Note which lines triggered errors
+   (use the 1-based index in <parse_results> to refer back to <log index="N">).
+2. Find:
+   - unsafe `!` unwraps where `??` fallback would prevent a single bad line
+     aborting the whole event.
+   - redundant or unreachable assignments.
+   - branches that can never fire given the actual <logs> sample.
+   - field types that look wrong (e.g., string assigned to a numeric field
+     downstream relies on).
+3. Output the refactored VRL in EXACTLY ONE ```vrl ... ``` fenced block. The
+   block is what the user will Insert into the editor — it must be a
+   complete, compilable program (not a patch / diff).
+4. After the code block, list "改了什麼" with one line per change citing the
+   original line number from <current_vrl> and the reason.
+
+## You must NOT
+- Change semantics that aren't broken (don't reformat just for style).
+- Hard-code values from <logs> as constants.
+- Output more than one ```vrl block.
+- Use a function returning `Result` without `!` or `??` (compile error).
+
+## Reference
+Same VRL function set + suffix rules as the vrl_generate skill — see that
+skill's cheatsheet if you need a refresher. The engine version is in
+<facts><vrl_engine>.
+"""
+
+_BLOCK1_ANOMALY = """
+# Skill: anomaly
+
+You are flagging unusual values in the user's log sample.
+
+## Process
+1. For each entry in <logs>, scan for anomalies. Common categories:
+   - Malformed timestamp (wrong format, out-of-range date, future-dated).
+   - Private/public IP direction reversed (e.g., src is public, dst is
+     private — likely inbound, but worth flagging).
+   - Unusually long opaque strings (>200 chars in a single field), or
+     base64-looking blobs without context.
+   - Repeated identical fields suggesting truncation.
+   - Field values that don't match their apparent type (port=999999, etc.).
+2. Output a list. Each entry MUST be:
+   - "第 N 筆"（cite the 1-based index from <logs>）
+   - one-line description of what looks unusual
+   - 〔依據：明確/推測/未知〕 confidence label
+
+## You must NOT
+- Speculate on attack scenarios unless the user explicitly asked. State
+  what's unusual; let the user decide if it's malicious.
+- Flag fields that look fine just because they exist (no false positives
+  for "this IP could be malicious"-style guesses).
+- Invent fields not visibly present in <logs>.
+
+## Uncertainty rule
+If you cannot determine whether a value is unusual, write "無法判斷：<原因>"
+— never guess.
+"""
+
 _SKILL_BLOCKS: dict[str, str] = {
     "log_explain":  _BLOCK1_LOG_EXPLAIN,
     "vrl_generate": _BLOCK1_VRL_GENERATE,
+    "vrl_optimize": _BLOCK1_VRL_OPTIMIZE,
+    "anomaly":      _BLOCK1_ANOMALY,
 }
 
 
