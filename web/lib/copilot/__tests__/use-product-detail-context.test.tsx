@@ -37,9 +37,7 @@ describe("useProductDetailCopilotContext", () => {
   });
 
   it("pushes library_versions ctx on versions sub-tab", () => {
-    renderHook(() =>
-      useProductDetailCopilotContext({ ...baseInput, subTab: "versions" }),
-    );
+    renderHook(() => useProductDetailCopilotContext({ ...baseInput, subTab: "versions" }));
     const ctx = useCopilotStore.getState().pageContext;
     expect(ctx?.page).toBe("library_versions");
     if (!ctx || ctx.page !== "library_versions") throw new Error();
@@ -84,9 +82,7 @@ describe("useProductDetailCopilotContext", () => {
   });
 
   it("clears pageContext on unmount", () => {
-    const { unmount } = renderHook(() =>
-      useProductDetailCopilotContext({ ...baseInput }),
-    );
+    const { unmount } = renderHook(() => useProductDetailCopilotContext({ ...baseInput }));
     expect(useCopilotStore.getState().pageContext?.page).toBe("library_product");
     unmount();
     expect(useCopilotStore.getState().pageContext).toBeNull();

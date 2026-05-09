@@ -57,7 +57,7 @@ describe("useLibraryOverviewCopilotContext", () => {
     expect(ctx.productCount).toBe(3);
     expect(ctx.productsMissingParseRule).toEqual([
       "paloalto/panorama", // is_empty
-      "cisco/asa",          // published === 0
+      "cisco/asa", // published === 0
     ]);
     expect(ctx.filters.status).toBe("published");
 

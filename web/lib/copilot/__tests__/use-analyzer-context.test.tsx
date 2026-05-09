@@ -28,9 +28,10 @@ describe("useAnalyzerCopilotContext", () => {
       }),
     );
     const ctx = useCopilotStore.getState().pageContext;
-    expect(ctx?.page).toBe("analyzer");
-    expect(ctx?.vrl).toBe(". = .x");
-    expect(ctx?.logs).toEqual(["log a"]);
+    if (!ctx || ctx.page !== "analyzer") throw new Error("expected analyzer ctx");
+    expect(ctx.page).toBe("analyzer");
+    expect(ctx.vrl).toBe(". = .x");
+    expect(ctx.logs).toEqual(["log a"]);
   });
 
   it("clears pageContext on unmount", () => {
@@ -64,9 +65,13 @@ describe("useAnalyzerCopilotContext", () => {
         }),
       { initialProps: { logs: ["a"] } },
     );
-    expect(useCopilotStore.getState().pageContext?.logs).toEqual(["a"]);
+    const ctx1 = useCopilotStore.getState().pageContext;
+    if (!ctx1 || ctx1.page !== "analyzer") throw new Error("expected analyzer ctx");
+    expect(ctx1.logs).toEqual(["a"]);
     rerender({ logs: ["a", "b"] });
-    expect(useCopilotStore.getState().pageContext?.logs).toEqual(["a", "b"]);
+    const ctx2 = useCopilotStore.getState().pageContext;
+    if (!ctx2 || ctx2.page !== "analyzer") throw new Error("expected analyzer ctx");
+    expect(ctx2.logs).toEqual(["a", "b"]);
   });
 
   it("registers and unregisters editor bridge", () => {

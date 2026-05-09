@@ -29,9 +29,7 @@ export type LibraryOverviewStateForCopilot = {
  * On unmount the pageContext is cleared so navigating away from /library
  * doesn't leak overview ctx into other pages.
  */
-export function useLibraryOverviewCopilotContext(
-  state: LibraryOverviewStateForCopilot,
-): void {
+export function useLibraryOverviewCopilotContext(state: LibraryOverviewStateForCopilot): void {
   const setPageContext = useCopilotStore((s) => s.setPageContext);
 
   const [debouncedFilters] = useDebounce(state.filters, 200);
@@ -42,10 +40,7 @@ export function useLibraryOverviewCopilotContext(
       vendor: g.vendor.slug,
       products: g.products,
     }));
-    const productCount = productsByVendor.reduce(
-      (sum, g) => sum + g.products.length,
-      0,
-    );
+    const productCount = productsByVendor.reduce((sum, g) => sum + g.products.length, 0);
     const missing: string[] = [];
     for (const g of productsByVendor) {
       for (const p of g.products) {
