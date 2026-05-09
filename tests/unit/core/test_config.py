@@ -41,3 +41,25 @@ def test_copilot_settings_defaults(monkeypatch):
     assert s.llm_copilot_max_history == 20
     assert s.llm_copilot_max_log_lines_in_context == 20
     assert s.llm_copilot_max_vrl_chars_in_context == 4000
+
+
+def test_copilot_d2_settings_defaults(monkeypatch):
+    """D2 settings should default sensibly when env not set."""
+    for k in [
+        "LLM_COPILOT_VRL_MODEL",
+        "LLM_COPILOT_MAX_LIBRARY_PRODUCTS_IN_CONTEXT",
+    ]:
+        monkeypatch.delenv(k, raising=False)
+
+    from app.core.config import Settings
+
+    s = Settings()  # type: ignore[call-arg]
+    assert s.llm_copilot_vrl_model is None
+    assert s.llm_copilot_max_library_products_in_context == 20
+
+
+def test_copilot_d2_vrl_model_override(monkeypatch):
+    monkeypatch.setenv("LLM_COPILOT_VRL_MODEL", "claude-sonnet-4-6")
+    from app.core.config import Settings
+    s = Settings()  # type: ignore[call-arg]
+    assert s.llm_copilot_vrl_model == "claude-sonnet-4-6"

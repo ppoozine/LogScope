@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     llm_copilot_max_vrl_chars_in_context: int = Field(
         4000, alias="LLM_COPILOT_MAX_VRL_CHARS_IN_CONTEXT"
     )
+    llm_copilot_vrl_model: str | None = Field(
+        None, alias="LLM_COPILOT_VRL_MODEL"
+    )
+    llm_copilot_max_library_products_in_context: int = Field(
+        20, alias="LLM_COPILOT_MAX_LIBRARY_PRODUCTS_IN_CONTEXT"
+    )
 
     clickhouse_url: str | None = Field(default=None, alias="CLICKHOUSE_URL")
 
