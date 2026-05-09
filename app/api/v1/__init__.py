@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.modules.analyzer.routers.match_router import router as analyzer_match_router
 from app.modules.analyzer.routers.parse_router import router as analyzer_parse_router
 from app.modules.auth.routers.auth_router import router as auth_router
+from app.modules.copilot.routers.chat_router import router as copilot_chat_router
 from app.modules.library.routers.field_schema_router import router as field_schema_router
 from app.modules.library.routers.library_overview_router import router as library_overview_router
 from app.modules.library.routers.log_type_router import router as log_type_router
@@ -24,3 +25,4 @@ router.include_router(sample_log_router, prefix="/library", tags=["library:sampl
 router.include_router(library_stats_router, prefix="/library", tags=["library:stats"])
 router.include_router(analyzer_parse_router, prefix="/analyzer", tags=["analyzer"])
 router.include_router(analyzer_match_router, prefix="/analyzer", tags=["analyzer"])
+router.include_router(copilot_chat_router, prefix="/copilot", tags=["copilot"])

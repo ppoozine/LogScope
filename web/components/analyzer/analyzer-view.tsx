@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { useMatch, useParse } from "@/lib/api/queries/analyzer";
 import type { components } from "@/lib/api/types";
+import { useAnalyzerCopilotContext } from "@/lib/copilot/hooks/use-analyzer-context";
 import { loadAnalyzerState, saveAnalyzerState } from "@/lib/storage/analyzer-state";
 import { formatVrlSource } from "@/lib/vrl/format";
 
@@ -93,6 +94,31 @@ export function AnalyzerView({ preload, noKey }: Props) {
     if (!debouncedFirstLog.trim()) return;
     matchMutate({ raw_log: debouncedFirstLog, top_k: 3 });
   }, [debouncedFirstLog, noKey, matchMutate]);
+
+  // Push analyzer state into the Copilot store so the chat panel can read it.
+  // Hook clears the store on unmount (e.g. when navigating away from /analyzer).
+  const parseData = parse.data ?? null;
+  const matchData = match.data ?? null;
+  const topCandidate = matchData?.candidates?.[0] ?? null;
+  useAnalyzerCopilotContext({
+    vrl: vrl ? vrl : null,
+    vrlEngine: parseData?.engine ?? null,
+    logs: logs ? logs.split("\n").filter((l) => l.length > 0) : [],
+    parseResults:
+      parseData?.results?.map((r) => ({
+        index: r.index,
+        status: r.status === "success" ? "ok" : "error",
+        message: r.error || undefined,
+      })) ?? [],
+    matchTopCandidate: topCandidate
+      ? {
+          vendorSlug: topCandidate.vendor_slug,
+          productSlug: topCandidate.product_slug,
+          logTypeName: topCandidate.log_type_name,
+          confidence: topCandidate.confidence,
+        }
+      : null,
+  });
 
   // Fire-and-forget /check call. We swallow network errors here (instead of
   // letting React Query bubble them through the dev overlay) — the linter
@@ -227,12 +253,11 @@ export function AnalyzerView({ preload, noKey }: Props) {
     }
   };
 
-  const parseResult = parse.data ?? null;
-  const parseStatus = parseResult?.summary
+  const parseStatus = parseData?.summary
     ? {
-        ok: parseResult.summary.error === 0,
-        errors: parseResult.summary.error,
-        total: parseResult.summary.total,
+        ok: parseData.summary.error === 0,
+        errors: parseData.summary.error,
+        total: parseData.summary.total,
       }
     : undefined;
 
@@ -317,7 +342,7 @@ export function AnalyzerView({ preload, noKey }: Props) {
           </div>
         ) : (
           <ResultPane
-            parseResult={parseResult ?? null}
+            parseResult={parseData ?? null}
             fields={fields}
             hasLogTypeContext={!!logTypeId}
             onSaveBackToLibrary={logTypeId ? handleSaveBackToLibrary : undefined}

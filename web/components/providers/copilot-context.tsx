@@ -1,6 +1,16 @@
 "use client";
 
-import { createContext, type ReactNode, useCallback, useContext, useState } from "react";
+import type { ReactNode } from "react";
+
+import { useCopilotStore } from "@/lib/copilot/store";
+
+/**
+ * Kept as a no-op so root layout's <CopilotProvider> keeps compiling.
+ * Zustand needs no Provider; state lives in `useCopilotStore`.
+ */
+export function CopilotProvider({ children }: { children: ReactNode }) {
+  return <>{children}</>;
+}
 
 type CopilotState = {
   isOpen: boolean;
@@ -8,18 +18,9 @@ type CopilotState = {
   close: () => void;
 };
 
-const Ctx = createContext<CopilotState | null>(null);
-
-export function CopilotProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const toggle = useCallback(() => setIsOpen((v) => !v), []);
-  const close = useCallback(() => setIsOpen(false), []);
-
-  return <Ctx.Provider value={{ isOpen, toggle, close }}>{children}</Ctx.Provider>;
-}
-
 export function useCopilot(): CopilotState {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("useCopilot must be used inside CopilotProvider");
-  return v;
+  const isOpen = useCopilotStore((s) => s.isOpen);
+  const toggle = useCopilotStore((s) => s.toggle);
+  const close = useCopilotStore((s) => s.close);
+  return { isOpen, toggle, close };
 }

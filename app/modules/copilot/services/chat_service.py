@@ -1,0 +1,89 @@
+"""Copilot chat service — orchestrates Anthropic streaming and yields SSE bytes."""
+
+from __future__ import annotations
+
+import json
+import logging
+from collections.abc import AsyncIterator
+
+from app.modules.copilot.constants import (
+    ERROR_ANTHROPIC_FAILED,
+    ERROR_NO_API_KEY,
+    SSE_EVENT_DONE,
+    SSE_EVENT_ERROR,
+    SSE_EVENT_TEXT_DELTA,
+)
+from app.modules.copilot.schemas import ChatRequest
+from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+logger = logging.getLogger(__name__)
+
+
+class ChatService:
+    """Stream Anthropic responses as SSE bytes for the copilot chat endpoint."""
+
+    def __init__(
+        self,
+        *,
+        anthropic_client,
+        anthropic_api_key: str | None,
+        model: str,
+        max_history: int,
+        max_log_lines_in_context: int,
+        max_vrl_chars_in_context: int,
+    ) -> None:
+        self._client = anthropic_client
+        self._api_key = anthropic_api_key
+        self._model = model
+        self._max_history = max_history
+        self._max_log_lines = max_log_lines_in_context
+        self._max_vrl_chars = max_vrl_chars_in_context
+
+    async def stream(self, *, request: ChatRequest) -> AsyncIterator[bytes]:
+        if not self._api_key:
+            yield self._sse(
+                SSE_EVENT_ERROR,
+                {
+                    "code": ERROR_NO_API_KEY,
+                    "message": "Copilot 未啟用：尚未設定 ANTHROPIC_API_KEY",
+                },
+            )
+            yield self._sse(SSE_EVENT_DONE, {})
+            return
+
+        system_blocks = build_system_blocks(
+            skill=request.skill,
+            page_context=request.page_context,
+            max_log_lines=self._max_log_lines,
+            max_vrl_chars=self._max_vrl_chars,
+        )
+        anthropic_messages = [
+            {"role": m.role, "content": m.content}
+            for m in request.messages[-self._max_history :]
+        ]
+
+        try:
+            async with self._client.messages.stream(
+                model=self._model,
+                max_tokens=2048,
+                system=system_blocks,
+                messages=anthropic_messages,
+            ) as stream:
+                async for text in stream.text_stream:
+                    yield self._sse(SSE_EVENT_TEXT_DELTA, {"text": text})
+        except Exception:
+            logger.exception("anthropic_stream_failed")
+            yield self._sse(
+                SSE_EVENT_ERROR,
+                {
+                    "code": ERROR_ANTHROPIC_FAILED,
+                    "message": "Copilot 暫時無法回應，請稍後再試",
+                },
+            )
+        finally:
+            yield self._sse(SSE_EVENT_DONE, {})
+
+    @staticmethod
+    def _sse(event: str, data: dict) -> bytes:
+        body = json.dumps(data, ensure_ascii=False)
+        return f"event: {event}\ndata: {body}\n\n".encode()
