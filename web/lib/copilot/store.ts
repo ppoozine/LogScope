@@ -1,7 +1,8 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 
-import type { ChatMessage, PageContext } from "./types";
+import { extractVrlBlock } from "./extract-vrl-block";
+import type { ChatMessage, EditorBridge, PageContext, PendingInsert, SkillName } from "./types";
 
 const MAX_HISTORY = 20;
 
@@ -16,6 +17,9 @@ type CopilotState = {
   pageContext: PageContext | null;
   isStreaming: boolean;
   abortController: AbortController | null;
+  editorBridge: EditorBridge;
+  pendingInsert: PendingInsert | null;
+  lastSkill: SkillName | null;
 
   toggle: () => void;
   open: () => void;
@@ -30,6 +34,13 @@ type CopilotState = {
   setMessageError: (id: string, error: string) => void;
   finalizeMessage: (id: string) => void;
   clearMessages: () => void;
+
+  registerEditor: (b: { setVrl: (s: string) => void; getVrl: () => string }) => void;
+  unregisterEditor: () => void;
+  requestInsert: (proposedVrl: string, messageId: string) => void;
+  confirmInsert: () => void;
+  cancelInsert: () => void;
+  setLastSkill: (s: SkillName | null) => void;
 };
 
 function trim(messages: ChatMessage[]): ChatMessage[] {
@@ -44,6 +55,9 @@ export const useCopilotStore = create<CopilotState>()(
       pageContext: null,
       isStreaming: false,
       abortController: null,
+      editorBridge: { setVrl: null, getVrl: () => "" },
+      pendingInsert: null,
+      lastSkill: null,
 
       toggle: () => set((s) => ({ isOpen: !s.isOpen })),
       open: () => set({ isOpen: true }),
@@ -75,12 +89,33 @@ export const useCopilotStore = create<CopilotState>()(
           messages: s.messages.map((m) => (m.id === id ? { ...m, error } : m)),
         })),
 
-      finalizeMessage: (_id) => {
-        // No-op for D1 — content already accumulated. Reserved for future
-        // post-processing (markdown sanitisation, code-block detection).
-      },
+      finalizeMessage: (id) =>
+        set((s) => ({
+          messages: s.messages.map((m) =>
+            m.id === id && m.role === "assistant"
+              ? { ...m, vrlBlock: extractVrlBlock(m.content) ?? undefined }
+              : m,
+          ),
+        })),
 
       clearMessages: () => set({ messages: [] }),
+
+      registerEditor: ({ setVrl, getVrl }) => set({ editorBridge: { setVrl, getVrl } }),
+
+      unregisterEditor: () => set({ editorBridge: { setVrl: null, getVrl: () => "" } }),
+
+      requestInsert: (proposedVrl, messageId) => set({ pendingInsert: { proposedVrl, messageId } }),
+
+      confirmInsert: () => {
+        const { pendingInsert, editorBridge } = useCopilotStore.getState();
+        if (!pendingInsert) return;
+        if (editorBridge.setVrl) editorBridge.setVrl(pendingInsert.proposedVrl);
+        set({ pendingInsert: null });
+      },
+
+      cancelInsert: () => set({ pendingInsert: null }),
+
+      setLastSkill: (lastSkill) => set({ lastSkill }),
     }),
     {
       name: "logscope.copilot",

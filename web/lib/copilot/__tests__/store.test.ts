@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useCopilotStore } from "@/lib/copilot/store";
 
@@ -85,5 +85,92 @@ describe("useCopilotStore", () => {
     expect(useCopilotStore.getState().pageContext?.page).toBe("analyzer");
     useCopilotStore.getState().setPageContext(null);
     expect(useCopilotStore.getState().pageContext).toBeNull();
+  });
+});
+
+describe("editor bridge", () => {
+  beforeEach(() =>
+    useCopilotStore.setState({
+      editorBridge: { setVrl: null, getVrl: () => "" },
+      pendingInsert: null,
+      lastSkill: null,
+    }),
+  );
+
+  it("registerEditor stores callbacks", () => {
+    const setVrl = vi.fn();
+    const getVrl = vi.fn(() => "current");
+    useCopilotStore.getState().registerEditor({ setVrl, getVrl });
+    const b = useCopilotStore.getState().editorBridge;
+    expect(b.setVrl).toBe(setVrl);
+    expect(b.getVrl()).toBe("current");
+  });
+
+  it("unregisterEditor clears callbacks", () => {
+    useCopilotStore.getState().registerEditor({ setVrl: vi.fn(), getVrl: () => "" });
+    useCopilotStore.getState().unregisterEditor();
+    expect(useCopilotStore.getState().editorBridge.setVrl).toBeNull();
+  });
+
+  it("requestInsert sets pendingInsert", () => {
+    useCopilotStore.getState().requestInsert(". = .", "msg-1");
+    expect(useCopilotStore.getState().pendingInsert).toEqual({
+      proposedVrl: ". = .",
+      messageId: "msg-1",
+    });
+  });
+
+  it("confirmInsert calls editorBridge.setVrl and clears pending", () => {
+    const setVrl = vi.fn();
+    useCopilotStore.getState().registerEditor({ setVrl, getVrl: () => "old" });
+    useCopilotStore.getState().requestInsert("new vrl", "msg-1");
+    useCopilotStore.getState().confirmInsert();
+    expect(setVrl).toHaveBeenCalledWith("new vrl");
+    expect(useCopilotStore.getState().pendingInsert).toBeNull();
+  });
+
+  it("cancelInsert clears pending without calling setVrl", () => {
+    const setVrl = vi.fn();
+    useCopilotStore.getState().registerEditor({ setVrl, getVrl: () => "old" });
+    useCopilotStore.getState().requestInsert("new", "msg-1");
+    useCopilotStore.getState().cancelInsert();
+    expect(setVrl).not.toHaveBeenCalled();
+    expect(useCopilotStore.getState().pendingInsert).toBeNull();
+  });
+
+  it("confirmInsert no-ops when bridge is unregistered", () => {
+    useCopilotStore.getState().requestInsert("x", "m");
+    // bridge.setVrl is null
+    expect(() => useCopilotStore.getState().confirmInsert()).not.toThrow();
+    expect(useCopilotStore.getState().pendingInsert).toBeNull();
+  });
+});
+
+describe("lastSkill", () => {
+  it("setLastSkill updates state", () => {
+    useCopilotStore.getState().setLastSkill("vrl_generate");
+    expect(useCopilotStore.getState().lastSkill).toBe("vrl_generate");
+  });
+});
+
+describe("finalizeMessage extracts vrlBlock", () => {
+  beforeEach(() => useCopilotStore.setState({ messages: [] }));
+
+  it("writes vrlBlock when assistant content has a fenced vrl", () => {
+    const id = useCopilotStore.getState().appendAssistantPlaceholder();
+    useCopilotStore
+      .getState()
+      .appendDelta(id, "前言\n```vrl\n. = parse_syslog!(.message)\n```\n結尾");
+    useCopilotStore.getState().finalizeMessage(id);
+    const msg = useCopilotStore.getState().messages.find((m) => m.id === id);
+    expect(msg?.vrlBlock).toBe(". = parse_syslog!(.message)");
+  });
+
+  it("leaves vrlBlock undefined when no vrl block in content", () => {
+    const id = useCopilotStore.getState().appendAssistantPlaceholder();
+    useCopilotStore.getState().appendDelta(id, "純文字回應");
+    useCopilotStore.getState().finalizeMessage(id);
+    const msg = useCopilotStore.getState().messages.find((m) => m.id === id);
+    expect(msg?.vrlBlock).toBeUndefined();
   });
 });
