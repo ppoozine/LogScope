@@ -4,7 +4,7 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, Field
 
-SkillName = Literal["log_explain", "vrl_generate"]
+SkillName = Literal["log_explain", "vrl_generate", "vrl_optimize", "anomaly"]
 
 
 class ChatMessage(BaseModel):

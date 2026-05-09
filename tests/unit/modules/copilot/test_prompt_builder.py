@@ -653,3 +653,46 @@ class TestLibraryVersionsXml:
         assert diff_el is not None
         assert diff_el.get("base_version") == 'v"1'
         assert diff_el.get("head_version") == 'v"2'
+
+
+class TestVrlOptimizeBlock:
+    def test_vrl_optimize_skill_uses_dedicated_block(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+        text = build_system_blocks(
+            skill="vrl_optimize",
+            page_context=None,
+            max_log_lines=10,
+            max_vrl_chars=4000,
+            max_library_products=20,
+        )[0]["text"]
+
+        assert "LogScope Copilot" in text
+        assert "vrl_optimize" in text
+        # Refactor-oriented language
+        assert "```vrl" in text
+        assert "parse_results" in text
+        assert "You must NOT" in text
+        # Distinct from log_explain
+        assert "Skill: log_explain" not in text
+
+
+class TestAnomalyBlock:
+    def test_anomaly_skill_uses_dedicated_block(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+        text = build_system_blocks(
+            skill="anomaly",
+            page_context=None,
+            max_log_lines=10,
+            max_vrl_chars=4000,
+            max_library_products=20,
+        )[0]["text"]
+
+        assert "LogScope Copilot" in text
+        assert "anomaly" in text
+        # Anomaly-specific phrasing
+        assert "異常" in text or "anomal" in text.lower()
+        # Confidence labels (mandatory; consistent with log_explain)
+        assert "〔依據：" in text
+        assert "Skill: log_explain" not in text

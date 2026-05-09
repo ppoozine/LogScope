@@ -59,6 +59,22 @@ class TestChatRequest:
         )
         assert r.skill == "vrl_generate"
 
+    def test_skill_vrl_optimize_accepted(self):
+        from app.modules.copilot.schemas import ChatRequest
+        r = ChatRequest(
+            messages=[{"role": "user", "content": "hi"}],
+            skill="vrl_optimize",
+        )
+        assert r.skill == "vrl_optimize"
+
+    def test_skill_anomaly_accepted(self):
+        from app.modules.copilot.schemas import ChatRequest
+        r = ChatRequest(
+            messages=[{"role": "user", "content": "hi"}],
+            skill="anomaly",
+        )
+        assert r.skill == "anomaly"
+
     def test_invalid_skill_rejected(self):
         with pytest.raises(ValidationError):
             ChatRequest.model_validate(

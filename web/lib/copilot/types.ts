@@ -153,7 +153,7 @@ export type SSEEvent =
   | { type: "error"; code: string; message: string }
   | { type: "done" };
 
-export type SkillName = "log_explain" | "vrl_generate";
+export type SkillName = "log_explain" | "vrl_generate" | "vrl_optimize" | "anomaly";
 
 export type EditorBridge = {
   setVrl: ((next: string) => void) | null;
