@@ -164,3 +164,27 @@ export type PendingInsert = {
   proposedVrl: string;
   messageId: string;
 };
+
+// =============================================================
+// D3 — Inline VRL completion (⌘K)
+// =============================================================
+
+export type InlineMode = "insert" | "replace";
+
+/** Snake-case shape sent to backend POST /api/v1/copilot/inline/vrl. */
+export type InlineVrlRequest = {
+  instruction: string;
+  mode: InlineMode;
+  current_vrl: string;
+  cursor_offset?: number;          // mode=insert
+  selection_start?: number;        // mode=replace
+  selection_end?: number;          // mode=replace
+  vrl_engine: "0.25" | "0.32";
+  logs: string[];
+};
+
+/** Same SSE event shape as panel chat (text_delta / error / done). */
+export type InlineSSEEvent =
+  | { type: "text_delta"; text: string }
+  | { type: "error"; code: string; message: string }
+  | { type: "done" };
