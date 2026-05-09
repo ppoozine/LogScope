@@ -10,6 +10,8 @@ __pycache__/
 web/node_modules/
 web/.next/
 .runtime/
+backend.log
+frontend.log
 
 # Rust build artifacts
 target/
