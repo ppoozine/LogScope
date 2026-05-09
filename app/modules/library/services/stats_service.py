@@ -59,6 +59,10 @@ class StatsService:
         days = RANGE_TO_DAYS[range_]
         if not self.enabled or self._client is None or not log_type_ids:
             return ProductCoverage(enabled=self.enabled, range_days=days, log_types=[])
+        # clickhouse-connect's parameter binder doesn't quote elements inside an
+        # Array(UUID) literal, so CH rejects the resulting [uuid,uuid] payload.
+        # Pass strings via Array(String) — CH implicitly casts to UUID for the
+        # IN comparison against the UUID column.
         result = await self._client.query(
             """
             SELECT log_type_id,
@@ -66,12 +70,12 @@ class StatsService:
                    sum(total)   AS total,
                    sum(success) AS success
             FROM parse_events
-            WHERE log_type_id IN {ids:Array(UUID)}
+            WHERE log_type_id IN {ids:Array(String)}
               AND ts >= now() - INTERVAL {days:UInt16} DAY
             GROUP BY log_type_id, day
             ORDER BY log_type_id, day
             """,
-            parameters={"ids": log_type_ids, "days": days},
+            parameters={"ids": [str(u) for u in log_type_ids], "days": days},
         )
         return self._build_coverage(result.result_rows, log_type_ids, days)
 
