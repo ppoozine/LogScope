@@ -38,3 +38,163 @@ class TestBuildBlock1:
         assert "Process (follow in order)" not in text
         # Replaced by generic guidance
         assert "no active skill" in text.lower() or "active skill" in text.lower()
+
+
+class TestRenderPageContextXml:
+    def _ctx(self, **kwargs):
+        from app.modules.copilot.schemas import PageContext
+        defaults = {
+            "page": "analyzer",
+            "vrl": None,
+            "vrl_engine": None,
+            "logs": [],
+            "parse_results": [],
+            "match_top_candidate": None,
+        }
+        defaults.update(kwargs)
+        return PageContext(**defaults)
+
+    def test_minimal_context_only_facts(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        xml = _render_page_context_xml(
+            self._ctx(),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert '<page_context page="analyzer">' in xml
+        assert "<facts>" in xml
+        assert "<log_count>0</log_count>" in xml
+        assert "<hypotheses>" in xml
+        assert "<match_candidate" not in xml  # no candidate, not rendered
+        assert "<current_vrl" not in xml      # no vrl, not rendered
+
+    def test_logs_use_cdata_wrap(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        xml = _render_page_context_xml(
+            self._ctx(logs=["raw <log> with & ents"]),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert "<![CDATA[raw <log> with & ents]]>" in xml
+        assert '<logs count="1" showing="1">' in xml
+
+    def test_logs_truncated_to_max(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        logs = [f"line {i}" for i in range(30)]
+        xml = _render_page_context_xml(
+            self._ctx(logs=logs),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert '<logs count="30" showing="20">' in xml
+        assert "line 0" in xml
+        assert "line 19" in xml
+        assert "line 20" not in xml
+
+    def test_match_candidate_renders_to_hypotheses(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = self._ctx(
+            match_top_candidate={
+                "vendor_slug": "paloalto",
+                "product_slug": "pan-os",
+                "log_type_name": "Traffic",
+                "confidence": 0.94,
+            }
+        )
+        xml = _render_page_context_xml(ctx, max_log_lines=20, max_vrl_chars=4000)
+
+        assert 'source="MatchBar"' in xml
+        assert 'vendor="paloalto"' in xml
+        assert 'product="pan-os"' in xml
+        assert 'log_type="Traffic"' in xml
+        assert 'confidence="0.94"' in xml
+
+    def test_vrl_truncated_with_attribute(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        long_vrl = "x" * 5000
+        xml = _render_page_context_xml(
+            self._ctx(vrl=long_vrl, vrl_engine="v0.32"),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert '<current_vrl truncated_to="4000">' in xml
+        assert "x" * 4000 in xml
+        # full vrl NOT in output
+        assert "x" * 5000 not in xml
+        assert "<vrl_engine>v0.32</vrl_engine>" in xml
+
+    def test_short_vrl_no_truncate_attribute(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        xml = _render_page_context_xml(
+            self._ctx(vrl=". = .message"),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert "<current_vrl>" in xml          # no truncated_to attribute
+        assert ". = .message" in xml
+
+    def test_parse_results_attribute_escape(self):
+        import xml.etree.ElementTree as ET
+
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        xml_str = _render_page_context_xml(
+            self._ctx(
+                parse_results=[
+                    {"index": 1, "status": "ok"},
+                    {"index": 2, "status": "error", "message": 'field "x" missing'},
+                ]
+            ),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert '<result index="1" status="ok"/>' in xml_str
+        # Naive interpolation would break the XML. We assert by *parsing* the
+        # rendered output: a valid XML parse proves the `"` was correctly
+        # escaped (either via &quot; or by quoteattr switching to single-quote
+        # delimiters; both are valid XML).
+        root = ET.fromstring(xml_str)
+        results = root.findall(".//result")
+        assert len(results) == 2
+        err = results[1]
+        assert err.get("status") == "error"
+        assert err.get("message") == 'field "x" missing'
+
+    def test_log_with_cdata_terminator_is_escaped(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        xml = _render_page_context_xml(
+            self._ctx(logs=["payload before ]]> after"]),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        # The escape splits CDATA at the boundary so the LLM sees the literal `]]>` byte
+        # sequence without prematurely closing CDATA.
+        assert "]]]]><![CDATA[>" in xml
+        # CDATA opens and closes must remain balanced.
+        assert xml.count("<![CDATA[") == xml.count("]]>")
+
+    def test_vrl_with_cdata_terminator_is_escaped(self):
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        xml = _render_page_context_xml(
+            self._ctx(vrl=".x = parse(.) ?? \"]]>\""),
+            max_log_lines=20,
+            max_vrl_chars=4000,
+        )
+
+        assert "]]]]><![CDATA[>" in xml
+        assert xml.count("<![CDATA[") == xml.count("]]>")

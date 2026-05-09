@@ -1,6 +1,9 @@
 """Build Anthropic system blocks for Copilot."""
 
 from typing import Literal
+from xml.sax.saxutils import quoteattr
+
+from app.modules.copilot.schemas import PageContext
 
 
 _BLOCK1_PERSONA = """You are LogScope Copilot. The user is a security engineer.
@@ -81,3 +84,81 @@ def _build_block1(skill: Literal["log_explain"] | None) -> str:
     if skill == "log_explain":
         return _BLOCK1_PERSONA + _BLOCK1_LOG_EXPLAIN
     return _BLOCK1_PERSONA + _BLOCK1_NO_SKILL
+
+
+def _render_page_context_xml(
+    ctx: PageContext,
+    *,
+    max_log_lines: int,
+    max_vrl_chars: int,
+) -> str:
+    """Render PageContext as a single XML string for prompt block 2.
+
+    Uses CDATA for raw log lines and VRL content; quoteattr for attributes.
+    Hypotheses block always renders (empty if no candidate) so the LLM sees
+    the structure. Sections that have no data are omitted entirely.
+    """
+    lines: list[str] = []
+    lines.append(f'<page_context page="{ctx.page}">')
+
+    # facts
+    vrl_lines_n = ctx.vrl.count("\n") + 1 if ctx.vrl else 0
+    parse_ok = sum(1 for r in ctx.parse_results if r.status == "ok")
+    parse_err = sum(1 for r in ctx.parse_results if r.status == "error")
+    engine = ctx.vrl_engine or "unknown"
+    lines.append("  <facts>")
+    lines.append(f"    <vrl_lines>{vrl_lines_n}</vrl_lines>")
+    lines.append(f"    <vrl_engine>{engine}</vrl_engine>")
+    lines.append(f"    <log_count>{len(ctx.logs)}</log_count>")
+    lines.append(f'    <parse_summary ok="{parse_ok}" error="{parse_err}"/>')
+    lines.append("  </facts>")
+
+    # hypotheses
+    lines.append("  <hypotheses>")
+    if ctx.match_top_candidate is not None:
+        m = ctx.match_top_candidate
+        lines.append(
+            f'    <match_candidate source="MatchBar" '
+            f'vendor="{m.vendor_slug}" product="{m.product_slug}" '
+            f'log_type="{m.log_type_name}" confidence="{m.confidence:.2f}"/>'
+        )
+    lines.append("  </hypotheses>")
+
+    # logs
+    if ctx.logs:
+        showing = min(len(ctx.logs), max_log_lines)
+        lines.append(f'  <logs count="{len(ctx.logs)}" showing="{showing}">')
+        for i, raw in enumerate(ctx.logs[:max_log_lines]):
+            safe = raw.replace("]]>", "]]]]><![CDATA[>")
+            lines.append(f'    <log index="{i + 1}"><![CDATA[{safe}]]></log>')
+        lines.append("  </logs>")
+
+    # current_vrl
+    if ctx.vrl:
+        if len(ctx.vrl) > max_vrl_chars:
+            truncated = ctx.vrl[:max_vrl_chars]
+            attr = f' truncated_to="{max_vrl_chars}"'
+            content = truncated
+        else:
+            attr = ""
+            content = ctx.vrl
+        safe_vrl = content.replace("]]>", "]]]]><![CDATA[>")
+        lines.append(f"  <current_vrl{attr}>")
+        lines.append(f"    <![CDATA[{safe_vrl}]]>")
+        lines.append("  </current_vrl>")
+
+    # parse_results
+    if ctx.parse_results:
+        lines.append("  <parse_results>")
+        for r in ctx.parse_results:
+            if r.status == "error":
+                msg_attr = f" message={quoteattr(r.message or '')}"
+            else:
+                msg_attr = ""
+            lines.append(
+                f'    <result index="{r.index}" status="{r.status}"{msg_attr}/>'
+            )
+        lines.append("  </parse_results>")
+
+    lines.append("</page_context>")
+    return "\n".join(lines)
