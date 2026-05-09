@@ -61,6 +61,7 @@ class TestRenderPageContextXml:
             self._ctx(),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert '<page_context page="analyzer">' in xml
@@ -77,6 +78,7 @@ class TestRenderPageContextXml:
             self._ctx(logs=["raw <log> with & ents"]),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert "<![CDATA[raw <log> with & ents]]>" in xml
@@ -90,6 +92,7 @@ class TestRenderPageContextXml:
             self._ctx(logs=logs),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert '<logs count="30" showing="20">' in xml
@@ -108,7 +111,7 @@ class TestRenderPageContextXml:
                 "confidence": 0.94,
             }
         )
-        xml = _render_page_context_xml(ctx, max_log_lines=20, max_vrl_chars=4000)
+        xml = _render_page_context_xml(ctx, max_log_lines=20, max_vrl_chars=4000, max_library_products=20)
 
         assert 'source="MatchBar"' in xml
         assert 'vendor="paloalto"' in xml
@@ -124,6 +127,7 @@ class TestRenderPageContextXml:
             self._ctx(vrl=long_vrl, vrl_engine="v0.32"),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert '<current_vrl truncated_to="4000">' in xml
@@ -139,6 +143,7 @@ class TestRenderPageContextXml:
             self._ctx(vrl=". = .message"),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert "<current_vrl>" in xml          # no truncated_to attribute
@@ -158,6 +163,7 @@ class TestRenderPageContextXml:
             ),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         # Backend ParseResultItem.index is 0-based; renderer adds +1 so the
@@ -184,6 +190,7 @@ class TestRenderPageContextXml:
             self._ctx(logs=["payload before ]]> after"]),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         # The escape splits CDATA at the boundary so the LLM sees the literal `]]>` byte
@@ -199,6 +206,7 @@ class TestRenderPageContextXml:
             self._ctx(vrl=".x = parse(.) ?? \"]]>\""),
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert "]]]]><![CDATA[>" in xml
@@ -214,6 +222,7 @@ class TestBuildSystemBlocks:
             page_context=None,
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert len(blocks) == 1
@@ -231,6 +240,7 @@ class TestBuildSystemBlocks:
             page_context=ctx,
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert len(blocks) == 2
@@ -248,6 +258,7 @@ class TestBuildSystemBlocks:
             page_context=None,
             max_log_lines=20,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
 
         assert len(blocks) == 1
@@ -263,6 +274,7 @@ class TestVrlGenerateBlock:
             page_context=None,
             max_log_lines=10,
             max_vrl_chars=4000,
+            max_library_products=20,
         )
         text = blocks[0]["text"]
         # 含 persona 段
@@ -278,7 +290,7 @@ class TestVrlGenerateBlock:
         from app.modules.copilot.services.prompt_builder import build_system_blocks
         blocks = build_system_blocks(
             skill="vrl_generate", page_context=None,
-            max_log_lines=10, max_vrl_chars=4000,
+            max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
         )
         text = blocks[0]["text"]
         assert "Skill: log_explain" not in text
@@ -290,7 +302,7 @@ class TestVrlGenerateBlock:
         from app.modules.copilot.services.prompt_builder import build_system_blocks
         blocks = build_system_blocks(
             skill="vrl_generate", page_context=None,
-            max_log_lines=10, max_vrl_chars=4000,
+            max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
         )
         text = blocks[0]["text"]
         # Core parse functions
@@ -309,10 +321,70 @@ class TestVrlGenerateBlock:
         from app.modules.copilot.services.prompt_builder import build_system_blocks
         blocks = build_system_blocks(
             skill="vrl_generate", page_context=None,
-            max_log_lines=10, max_vrl_chars=4000,
+            max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
         )
         text = blocks[0]["text"]
         assert "Example A" in text
         assert "Example B" in text
         # Each example has its own ```vrl block
         assert text.count("```vrl") >= 2
+
+
+class TestPageContextDispatch:
+    def test_library_overview_routes_to_renderer(self):
+        from app.modules.copilot.schemas import LibraryOverviewPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = LibraryOverviewPageContext(
+            page="library_overview",
+            filters={},
+            vendor_count=1,
+            product_count=2,
+            products_missing_parse_rule=[],
+        )
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="library_overview">' in xml
+
+    def test_library_product_routes_to_renderer(self):
+        from app.modules.copilot.schemas import LibraryProductPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = LibraryProductPageContext(
+            page="library_product",
+            vendor_slug="v",
+            product_slug="p",
+            product_status="active",
+        )
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="library_product">' in xml
+
+    def test_library_versions_routes_to_renderer(self):
+        from app.modules.copilot.schemas import LibraryVersionsPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = LibraryVersionsPageContext(
+            page="library_versions",
+            vendor_slug="v",
+            product_slug="p",
+            log_type_name="t",
+        )
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="library_versions">' in xml
+
+    def test_analyzer_still_works_after_extraction(self):
+        from app.modules.copilot.schemas import AnalyzerPageContext
+        from app.modules.copilot.services.prompt_builder import _render_page_context_xml
+
+        ctx = AnalyzerPageContext(page="analyzer", logs=["a", "b"])
+        xml = _render_page_context_xml(
+            ctx, max_log_lines=10, max_vrl_chars=4000, max_library_products=20,
+        )
+        assert '<page_context page="analyzer">' in xml
+        assert '<log index="1">' in xml
+        assert '<log index="2">' in xml

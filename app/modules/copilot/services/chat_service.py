@@ -65,6 +65,7 @@ class ChatService:
             page_context=request.page_context,
             max_log_lines=self._max_log_lines,
             max_vrl_chars=self._max_vrl_chars,
+            max_library_products=self._max_library_products,
         )
         anthropic_messages = [
             {"role": m.role, "content": m.content}

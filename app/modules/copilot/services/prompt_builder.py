@@ -5,6 +5,11 @@ from xml.sax.saxutils import quoteattr
 from app.modules.copilot.schemas import PageContext
 
 
+def _safe_cdata(text: str) -> str:
+    """Escape ``]]>`` sequences so a CDATA section can wrap the text."""
+    return text.replace("]]>", "]]]]><![CDATA[>")
+
+
 _BLOCK1_PERSONA = """You are LogScope Copilot. The user is a security engineer.
 
 Respond in 繁體中文. Engineers want answers, not paragraphs.
@@ -210,13 +215,13 @@ def _build_block1(skill: str | None) -> str:
     return _BLOCK1_PERSONA + block
 
 
-def _render_page_context_xml(
-    ctx: PageContext,
+def _render_analyzer_xml(
+    ctx,
     *,
     max_log_lines: int,
     max_vrl_chars: int,
 ) -> str:
-    """Render PageContext as a single XML string for prompt block 2.
+    """Render AnalyzerPageContext as XML for prompt block 2.
 
     Uses CDATA for raw log lines and VRL content; quoteattr for attributes.
     Hypotheses block always renders (empty if no candidate) so the LLM sees
@@ -253,7 +258,7 @@ def _render_page_context_xml(
         showing = min(len(ctx.logs), max_log_lines)
         lines.append(f'  <logs count="{len(ctx.logs)}" showing="{showing}">')
         for i, raw in enumerate(ctx.logs[:max_log_lines]):
-            safe = raw.replace("]]>", "]]]]><![CDATA[>")
+            safe = _safe_cdata(raw)
             lines.append(f'    <log index="{i + 1}"><![CDATA[{safe}]]></log>')
         lines.append("  </logs>")
 
@@ -266,7 +271,7 @@ def _render_page_context_xml(
         else:
             attr = ""
             content = ctx.vrl
-        safe_vrl = content.replace("]]>", "]]]]><![CDATA[>")
+        safe_vrl = _safe_cdata(content)
         lines.append(f"  <current_vrl{attr}>")
         lines.append(f"    <![CDATA[{safe_vrl}]]>")
         lines.append("  </current_vrl>")
@@ -290,12 +295,50 @@ def _render_page_context_xml(
     return "\n".join(lines)
 
 
+def _render_library_overview_xml(ctx, *, max_products: int) -> str:
+    """Stub: T18 will fill in the real implementation."""
+    return '<page_context page="library_overview"><facts/></page_context>'
+
+
+def _render_library_product_xml(ctx, *, max_vrl_chars: int) -> str:
+    """Stub: T19 will fill in the real implementation."""
+    return '<page_context page="library_product"><facts/></page_context>'
+
+
+def _render_library_versions_xml(ctx, *, max_vrl_chars: int) -> str:
+    """Stub: T20 will fill in the real implementation."""
+    return '<page_context page="library_versions"><facts/></page_context>'
+
+
+def _render_page_context_xml(
+    ctx: PageContext,
+    *,
+    max_log_lines: int,
+    max_vrl_chars: int,
+    max_library_products: int,
+) -> str:
+    """Dispatch PageContext to the appropriate per-page renderer."""
+    page = ctx.page
+    if page == "analyzer":
+        return _render_analyzer_xml(
+            ctx, max_log_lines=max_log_lines, max_vrl_chars=max_vrl_chars,
+        )
+    if page == "library_overview":
+        return _render_library_overview_xml(ctx, max_products=max_library_products)
+    if page == "library_product":
+        return _render_library_product_xml(ctx, max_vrl_chars=max_vrl_chars)
+    if page == "library_versions":
+        return _render_library_versions_xml(ctx, max_vrl_chars=max_vrl_chars)
+    raise ValueError(f"unknown page: {page}")
+
+
 def build_system_blocks(
     *,
     skill: str | None,
     page_context: PageContext | None,
     max_log_lines: int,
     max_vrl_chars: int,
+    max_library_products: int,
 ) -> list[dict]:
     """Return Anthropic `system` parameter as a list of TextBlockParam dicts.
 
@@ -317,6 +360,7 @@ def build_system_blocks(
                     page_context,
                     max_log_lines=max_log_lines,
                     max_vrl_chars=max_vrl_chars,
+                    max_library_products=max_library_products,
                 ),
             }
         )
