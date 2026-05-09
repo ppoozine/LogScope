@@ -1,6 +1,5 @@
 """Build Anthropic system blocks for Copilot."""
 
-from typing import Literal
 from xml.sax.saxutils import quoteattr
 
 from app.modules.copilot.schemas import PageContext
@@ -79,11 +78,64 @@ The user opened Copilot without a page context. Answer general log / VRL /
 security questions briefly and helpfully.
 """
 
+_BLOCK1_VRL_GENERATE = """
+# Skill: vrl_generate
 
-def _build_block1(skill: Literal["log_explain"] | None) -> str:
-    if skill == "log_explain":
-        return _BLOCK1_PERSONA + _BLOCK1_LOG_EXPLAIN
-    return _BLOCK1_PERSONA + _BLOCK1_NO_SKILL
+You are generating VRL (Vector Remap Language) parse rules.
+
+## Process (follow in order)
+1. Read <logs> + <current_vrl>; identify the format and any existing structure.
+2. List the fields to extract. State each field's source position
+   (regex group / json path / csv index).
+3. Write VRL. Wrap the code in ```vrl ... ``` (exactly one fenced block,
+   language tag must be `vrl`). The block is what the user will Insert
+   into the editor.
+4. After the code block, list edge cases or limitations:
+   - what fields might be missing in some logs
+   - which engine version this targets (read <vrl_engine> from <facts>)
+   - what was intentionally NOT extracted
+
+## You must NOT
+- Invent fields not visibly present in <logs>.
+- Hard-code API keys, tokens, passwords, hostnames of production systems.
+  Use VRL `del()` if a sensitive field needs removal.
+- Use VRL syntax that the engine version in <facts><vrl_engine> doesn't
+  support (e.g., 0.32 syntax when engine is 0.25).
+- Output more than one ```vrl block. If you need to show alternative
+  approaches, describe them in prose; pick one canonical version for
+  the fenced block.
+
+## Example output structure
+
+這個 log 是 syslog + PAN-OS CSV 結構。我會用 parse_syslog 抓 header，
+再用 split 處理 CSV 段：
+
+```vrl
+. = parse_syslog!(.message)
+parts = split(string!(.message), ",")
+.timestamp = parts[1]
+.action    = parts[3]
+```
+
+注意：
+- 若 message 不是 CSV 結構（如某些 log_subtype）會 split 失敗 → 保留 raw
+- 此例針對 engine 0.32；0.25 需把 string! 改成 to_string!
+"""
+
+_SKILL_BLOCKS: dict[str, str] = {
+    "log_explain":  _BLOCK1_LOG_EXPLAIN,
+    "vrl_generate": _BLOCK1_VRL_GENERATE,
+}
+
+
+def _build_block1(skill: str | None) -> str:
+    if skill is None:
+        return _BLOCK1_PERSONA + _BLOCK1_NO_SKILL
+    block = _SKILL_BLOCKS.get(skill)
+    if block is None:
+        # schema validation already restricts skill, defensive fallback
+        return _BLOCK1_PERSONA + _BLOCK1_NO_SKILL
+    return _BLOCK1_PERSONA + block
 
 
 def _render_page_context_xml(
@@ -166,7 +218,7 @@ def _render_page_context_xml(
 
 def build_system_blocks(
     *,
-    skill: Literal["log_explain"] | None,
+    skill: str | None,
     page_context: PageContext | None,
     max_log_lines: int,
     max_vrl_chars: int,

@@ -247,3 +247,33 @@ class TestBuildSystemBlocks:
 
         assert len(blocks) == 1
         assert "Skill: log_explain" not in blocks[0]["text"]
+
+
+class TestVrlGenerateBlock:
+    def test_vrl_generate_skill_uses_dedicated_block(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+
+        blocks = build_system_blocks(
+            skill="vrl_generate",
+            page_context=None,
+            max_log_lines=10,
+            max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        # 含 persona 段
+        assert "LogScope Copilot" in text
+        # 含 vrl_generate skill 段
+        assert "vrl_generate" in text
+        # 含關鍵指令
+        assert "```vrl" in text
+        assert "hard-code" in text.lower() or "hardcode" in text.lower()
+        assert "You must NOT" in text
+
+    def test_vrl_generate_does_not_include_log_explain_section(self):
+        from app.modules.copilot.services.prompt_builder import build_system_blocks
+        blocks = build_system_blocks(
+            skill="vrl_generate", page_context=None,
+            max_log_lines=10, max_vrl_chars=4000,
+        )
+        text = blocks[0]["text"]
+        assert "Skill: log_explain" not in text
