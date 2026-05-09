@@ -296,8 +296,36 @@ def _render_analyzer_xml(
 
 
 def _render_library_overview_xml(ctx, *, max_products: int) -> str:
-    """Stub: T18 will fill in the real implementation."""
-    return '<page_context page="library_overview"><facts/></page_context>'
+    """Render LibraryOverviewPageContext as XML."""
+    lines = ['<page_context page="library_overview">']
+    lines.append("  <facts>")
+
+    # filters renders only non-None values; quoteattr handles quotes safely
+    filter_attrs = " ".join(
+        f"{k}={quoteattr(v)}"
+        for k, v in (ctx.filters or {}).items()
+        if v is not None
+    )
+    if filter_attrs:
+        lines.append(f"    <filters {filter_attrs}/>")
+    else:
+        lines.append("    <filters/>")
+
+    lines.append(f"    <vendor_count>{ctx.vendor_count}</vendor_count>")
+    lines.append(f"    <product_count>{ctx.product_count}</product_count>")
+    lines.append("  </facts>")
+
+    missing = ctx.products_missing_parse_rule or []
+    showing = min(len(missing), max_products)
+    lines.append(
+        f'  <products_missing_parse_rule count="{len(missing)}" showing="{showing}">'
+    )
+    for slug in missing[:max_products]:
+        lines.append(f"    <product slug={quoteattr(slug)}/>")
+    lines.append("  </products_missing_parse_rule>")
+
+    lines.append("</page_context>")
+    return "\n".join(lines)
 
 
 def _render_library_product_xml(ctx, *, max_vrl_chars: int) -> str:

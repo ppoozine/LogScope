@@ -388,3 +388,75 @@ class TestPageContextDispatch:
         assert '<page_context page="analyzer">' in xml
         assert '<log index="1">' in xml
         assert '<log index="2">' in xml
+
+
+class TestLibraryOverviewXml:
+    def _ctx(self, **kw):
+        from app.modules.copilot.schemas import LibraryOverviewPageContext
+        defaults = {
+            "page": "library_overview",
+            "filters": {"status": "published", "q": "palo"},
+            "vendor_count": 12,
+            "product_count": 34,
+            "products_missing_parse_rule": [
+                "paloalto/panorama",
+                "cisco/ftd",
+            ],
+        }
+        defaults.update(kw)
+        return LibraryOverviewPageContext(**defaults)
+
+    def test_basic_xml(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml = _render_library_overview_xml(self._ctx(), max_products=20)
+        assert '<page_context page="library_overview">' in xml
+        assert "<vendor_count>12</vendor_count>" in xml
+        assert "<product_count>34</product_count>" in xml
+        assert "paloalto/panorama" in xml
+        assert "cisco/ftd" in xml
+
+    def test_truncates_to_max_products(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        ctx = self._ctx(products_missing_parse_rule=[f"v/p{i}" for i in range(30)])
+        xml = _render_library_overview_xml(ctx, max_products=5)
+        # `showing` reflects how many entries are actually rendered, `count`
+        # the original total
+        assert 'showing="5"' in xml
+        assert 'count="30"' in xml
+        assert "v/p0" in xml
+        assert "v/p4" in xml
+        assert "v/p5" not in xml
+
+    def test_empty_missing_list(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml = _render_library_overview_xml(
+            self._ctx(products_missing_parse_rule=[]),
+            max_products=20,
+        )
+        assert 'count="0"' in xml
+        assert 'showing="0"' in xml
+
+    def test_filters_attribute_with_quote_characters(self):
+        """quoteattr handles embedded quotes safely."""
+        import xml.etree.ElementTree as ET
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml_str = _render_library_overview_xml(
+            self._ctx(filters={"q": 'has "quote"', "status": None}),
+            max_products=20,
+        )
+        # Result should be valid XML even with the embedded `"`
+        root = ET.fromstring(xml_str)
+        filters_el = root.find(".//filters")
+        assert filters_el is not None
+        # status=None is skipped, only q renders
+        assert filters_el.get("q") == 'has "quote"'
+        assert filters_el.get("status") is None
+
+    def test_filters_omitted_when_none_or_empty(self):
+        from app.modules.copilot.services.prompt_builder import _render_library_overview_xml
+        xml = _render_library_overview_xml(
+            self._ctx(filters={}),
+            max_products=20,
+        )
+        # Empty filters renders an empty <filters/> element
+        assert "<filters/>" in xml or "<filters />" in xml
