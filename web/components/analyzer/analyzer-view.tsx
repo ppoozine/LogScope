@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { EditorView } from "@codemirror/view";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useDebounce } from "use-debounce";
 
+import type { InlineProviders } from "@/components/analyzer/cm6-inline";
 import { DiffPane } from "@/components/analyzer/diff-pane";
 import { EditorPane } from "@/components/analyzer/editor-pane";
 import { LogPane } from "@/components/analyzer/log-pane";
@@ -16,6 +18,8 @@ import { ApiError, apiFetch } from "@/lib/api/client";
 import { useMatch, useParse } from "@/lib/api/queries/analyzer";
 import type { components } from "@/lib/api/types";
 import { useAnalyzerCopilotContext } from "@/lib/copilot/hooks/use-analyzer-context";
+import { useInlineVrl } from "@/lib/copilot/hooks/use-inline-vrl";
+import type { InlineVrlRequest } from "@/lib/copilot/types";
 import { loadAnalyzerState, saveAnalyzerState } from "@/lib/storage/analyzer-state";
 import { formatVrlSource } from "@/lib/vrl/format";
 
@@ -130,6 +134,22 @@ export function AnalyzerView({ preload, noKey }: Props) {
     setVrl: setVrlForCopilot,
     getVrl: getVrlForCopilot,
   });
+
+  const [inlineView, setInlineView] = useState<EditorView | null>(null);
+  const { send: sendInline } = useInlineVrl(inlineView);
+  const sendInlineRef = useRef(sendInline);
+  sendInlineRef.current = sendInline;
+
+  const inlineProviders = useMemo<InlineProviders>(
+    () => ({
+      getEngineVersion: () => engineVersion,
+      getLogs: () => (logs ? logs.split("\n").filter((l) => l.length > 0) : []),
+      sendInlineRequest: (req: InlineVrlRequest) => {
+        void sendInlineRef.current(req);
+      },
+    }),
+    [engineVersion, logs],
+  );
 
   // Fire-and-forget /check call. We swallow network errors here (instead of
   // letting React Query bubble them through the dev overlay) — the linter
@@ -329,6 +349,9 @@ export function AnalyzerView({ preload, noKey }: Props) {
           onEngineChange={setEngineVersion}
           parseStatus={parseStatus}
           onCheck={handleCheck}
+          onViewReady={setInlineView}
+          inlineEnabled
+          inlineProviders={inlineProviders}
         />
         <LogPane logs={logs} onLogsChange={setLogs} />
       </div>
