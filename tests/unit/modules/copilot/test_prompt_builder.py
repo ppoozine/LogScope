@@ -696,3 +696,166 @@ class TestAnomalyBlock:
         # Confidence labels (mandatory; consistent with log_explain)
         assert "〔依據：" in text
         assert "Skill: log_explain" not in text
+
+
+# ---------------------------------------------------------------------------
+# Inline VRL tests (Task 3)
+# ---------------------------------------------------------------------------
+
+from app.modules.copilot.schemas import InlineVrlRequest  # noqa: E402
+from app.modules.copilot.services.prompt_builder import (  # noqa: E402
+    _inject_marker,
+    _sanitize_markers,
+    build_inline_system_blocks,
+)
+
+
+class TestSanitizeMarkers:
+    def test_replaces_pipe_markers_with_underscore(self):
+        v = "let x = '<|cursor|>'"
+        out = _sanitize_markers(v)
+        assert "<|cursor|>" not in out
+        assert "<_cursor_>" in out
+
+    def test_preserves_offset_length(self):
+        # Marker length must be preserved so caller offsets stay valid.
+        for marker, sanitized in [
+            ("<|cursor|>", "<_cursor_>"),
+            ("<|sel_start|>", "<_sel_start_>"),
+            ("<|sel_end|>", "<_sel_end_>"),
+        ]:
+            assert len(marker) == len(sanitized)
+        v = "abc<|cursor|>def"
+        assert len(_sanitize_markers(v)) == len(v)
+
+    def test_no_marker_unchanged(self):
+        v = ". = parse_syslog!(.message)"
+        assert _sanitize_markers(v) == v
+
+
+class TestInjectMarker:
+    def test_insert_at_offset(self):
+        req = InlineVrlRequest(
+            instruction="x", mode="insert",
+            current_vrl="abcdef", cursor_offset=3,
+        )
+        assert _inject_marker("abcdef", req) == "abc<|cursor|>def"
+
+    def test_replace_wraps_selection(self):
+        req = InlineVrlRequest(
+            instruction="x", mode="replace",
+            current_vrl="abcdefghij",
+            selection_start=2, selection_end=5,
+        )
+        assert _inject_marker("abcdefghij", req) == "ab<|sel_start|>cde<|sel_end|>fghij"
+
+    def test_insert_at_zero(self):
+        req = InlineVrlRequest(
+            instruction="x", mode="insert",
+            current_vrl="", cursor_offset=0,
+        )
+        assert _inject_marker("", req) == "<|cursor|>"
+
+
+class TestBuildInlineSystemBlocks:
+    def _req_insert(self, **kw):
+        defaults = dict(
+            instruction="加 dst_ip",
+            mode="insert",
+            current_vrl=". = parse_syslog!(.message)",
+            cursor_offset=27,
+            vrl_engine="0.32",
+            logs=["log a", "log b"],
+        )
+        defaults.update(kw)
+        return InlineVrlRequest(**defaults)
+
+    def _req_replace(self, **kw):
+        defaults = dict(
+            instruction="改寫",
+            mode="replace",
+            current_vrl="abcdefghij",
+            selection_start=2,
+            selection_end=5,
+        )
+        defaults.update(kw)
+        return InlineVrlRequest(**defaults)
+
+    def test_returns_two_blocks(self):
+        blocks = build_inline_system_blocks(
+            self._req_insert(), max_log_lines=20, max_vrl_chars=4000,
+        )
+        assert len(blocks) == 2
+        assert blocks[0]["type"] == "text"
+        assert blocks[0].get("cache_control") == {"type": "ephemeral"}
+        assert blocks[1]["type"] == "text"
+        assert "cache_control" not in blocks[1]
+
+    def test_block1_contains_skill_rules(self):
+        blocks = build_inline_system_blocks(
+            self._req_insert(), max_log_lines=20, max_vrl_chars=4000,
+        )
+        b1 = blocks[0]["text"]
+        assert "Mode A" in b1
+        assert "Mode B" in b1
+        assert "ONLY raw VRL" in b1
+        assert "<|cursor|>" in b1
+        assert "<|sel_start|>" in b1
+
+    def test_block2_insert_has_cursor_marker(self):
+        blocks = build_inline_system_blocks(
+            self._req_insert(), max_log_lines=20, max_vrl_chars=4000,
+        )
+        b2 = blocks[1]["text"]
+        assert "<vrl_engine>0.32</vrl_engine>" in b2
+        assert "<|cursor|>" in b2
+        assert "<|sel_start|>" not in b2
+
+    def test_block2_replace_has_selection_markers(self):
+        blocks = build_inline_system_blocks(
+            self._req_replace(), max_log_lines=20, max_vrl_chars=4000,
+        )
+        b2 = blocks[1]["text"]
+        assert "<|sel_start|>" in b2
+        assert "<|sel_end|>" in b2
+        assert "<|cursor|>" not in b2
+
+    def test_block2_logs_capped(self):
+        req = self._req_insert(logs=[f"l{i}" for i in range(30)])
+        blocks = build_inline_system_blocks(req, max_log_lines=5, max_vrl_chars=4000)
+        b2 = blocks[1]["text"]
+        assert 'count="30" showing="5"' in b2
+        assert '<log index="5"' in b2
+        assert '<log index="6"' not in b2
+
+    def test_block2_vrl_truncated_when_marker_in_kept_window(self):
+        # cursor at offset 5 → marker is in first portion → truncate keeps it
+        req = self._req_insert(current_vrl="abcde" + "x" * 200, cursor_offset=5)
+        blocks = build_inline_system_blocks(req, max_log_lines=20, max_vrl_chars=50)
+        b2 = blocks[1]["text"]
+        assert "<|cursor|>" in b2
+        assert 'truncated_to="50"' in b2
+
+    def test_block2_vrl_omitted_when_marker_lost_to_truncation(self):
+        # cursor at offset 200 → marker lies past the truncated window
+        req = self._req_insert(current_vrl="x" * 500, cursor_offset=200)
+        blocks = build_inline_system_blocks(req, max_log_lines=20, max_vrl_chars=50)
+        b2 = blocks[1]["text"]
+        assert "<current_vrl" not in b2
+
+    def test_block2_no_logs(self):
+        req = self._req_insert(logs=[])
+        blocks = build_inline_system_blocks(req, max_log_lines=20, max_vrl_chars=4000)
+        b2 = blocks[1]["text"]
+        assert "<logs" not in b2
+
+    def test_user_vrl_with_literal_marker_sanitized(self):
+        # User's VRL accidentally contains <|cursor|> string
+        req = self._req_insert(
+            current_vrl='. = "<|cursor|> note"', cursor_offset=21,
+        )
+        blocks = build_inline_system_blocks(req, max_log_lines=20, max_vrl_chars=4000)
+        b2 = blocks[1]["text"]
+        # Original literal must have been sanitized so only one marker remains
+        assert b2.count("<|cursor|>") == 1
+        assert "<_cursor_>" in b2

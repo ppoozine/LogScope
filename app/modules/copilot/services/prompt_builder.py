@@ -2,7 +2,7 @@
 
 from xml.sax.saxutils import quoteattr
 
-from app.modules.copilot.schemas import PageContext
+from app.modules.copilot.schemas import InlineVrlRequest, PageContext
 
 
 def _safe_cdata(text: str) -> str:
@@ -262,6 +262,162 @@ You are flagging unusual values in the user's log sample.
 If you cannot determine whether a value is unusual, write "無法判斷：<原因>"
 — never guess.
 """
+
+_BLOCK1_VRL_INLINE = """You are LogScope's inline VRL completer. The user will give a short
+instruction (e.g., "加 dst_ip"). You output ONLY the VRL code that
+goes into the editor — no prose, no fence, no explanation.
+
+# Modes
+You will receive ONE of:
+
+  Mode A — INSERT
+    <current_vrl> contains a marker `<|cursor|>`. Output the code
+    that should be inserted at that position. Do NOT repeat any
+    surrounding code.
+
+  Mode B — REPLACE
+    <current_vrl> wraps a `<|sel_start|>...<|sel_end|>` region.
+    Output the code that REPLACES the region between those markers.
+    Do NOT repeat any code outside the markers.
+
+# Output rules (strict)
+- Output ONLY raw VRL. No markdown fences (```), no comments
+  explaining what you did, no leading/trailing prose.
+- No trailing newline.
+- The output should be syntactically valid VRL of the engine
+  version specified in <facts><vrl_engine>.
+- Use `??` fallback (not `!`) when extracting fields that may be
+  absent across the <logs> sample.
+- If the instruction is impossible from the data shown, output
+  exactly: `// 無法生成：<原因>` (a single VRL comment).
+
+# Don't
+- Don't invent fields not visibly present in <logs>.
+- Don't hard-code secrets (API keys, tokens, prod hostnames).
+- Don't use VRL functions outside the standard set (parse_syslog,
+  parse_json, parse_key_value/parse_kv, parse_regex, parse_csv,
+  split, to_int/to_float/to_bool/to_string/to_timestamp, del,
+  exists, string).
+
+# Example A — INSERT
+<facts><vrl_engine>0.32</vrl_engine></facts>
+<current_vrl><![CDATA[
+. = parse_syslog!(.message)
+parts = split(string!(.message), ",")
+.src_ip = parts[6]
+<|cursor|>
+]]></current_vrl>
+<logs><log index="1"><![CDATA[<134>... 10.0.1.5,8.8.8.8 ...]]></log></logs>
+INSTRUCTION: 加一個 dst_ip
+
+OUTPUT:
+.dst_ip = parts[7] ?? null
+
+# Example B — REPLACE
+<facts><vrl_engine>0.32</vrl_engine></facts>
+<current_vrl><![CDATA[
+. = parse_syslog!(.message)
+<|sel_start|>parts = split(string!(.message), ",")
+.src_ip = parts[6]<|sel_end|>
+]]></current_vrl>
+INSTRUCTION: 改用 parse_regex 命名群組
+
+OUTPUT:
+m = parse_regex!(string!(.message), r'(?P<src_ip>\\d+\\.\\d+\\.\\d+\\.\\d+)')
+.src_ip = m.src_ip
+"""
+
+
+_INLINE_MARKER_SUBS = {
+    "<|cursor|>": "<_cursor_>",
+    "<|sel_start|>": "<_sel_start_>",
+    "<|sel_end|>": "<_sel_end_>",
+}
+
+
+def _sanitize_markers(vrl: str) -> str:
+    """Replace any literal sentinel markers in user VRL with same-length
+    fallbacks. Length preservation keeps caller offsets intact."""
+    out = vrl
+    for marker, sanitized in _INLINE_MARKER_SUBS.items():
+        if marker in out:
+            assert len(marker) == len(sanitized)
+            out = out.replace(marker, sanitized)
+    return out
+
+
+def _inject_marker(sanitized_vrl: str, req: InlineVrlRequest) -> str:
+    if req.mode == "insert":
+        i = req.cursor_offset or 0
+        return sanitized_vrl[:i] + "<|cursor|>" + sanitized_vrl[i:]
+    s = req.selection_start or 0
+    e = req.selection_end or 0
+    return (
+        sanitized_vrl[:s]
+        + "<|sel_start|>"
+        + sanitized_vrl[s:e]
+        + "<|sel_end|>"
+        + sanitized_vrl[e:]
+    )
+
+
+def _truncate_keeping_marker(
+    marked_vrl: str, max_chars: int, req: InlineVrlRequest
+) -> tuple[str | None, bool]:
+    """Truncate marked_vrl to max_chars while keeping the injected marker
+    visible. Returns (text, truncated_flag) or (None, False) if marker
+    cannot be kept (caller should omit the <current_vrl> block)."""
+    if len(marked_vrl) <= max_chars:
+        return marked_vrl, False
+    needle = "<|cursor|>" if req.mode == "insert" else "<|sel_start|>"
+    if needle in marked_vrl[:max_chars]:
+        return marked_vrl[:max_chars], True
+    return None, False
+
+
+def build_inline_system_blocks(
+    request: InlineVrlRequest,
+    *,
+    max_log_lines: int,
+    max_vrl_chars: int,
+) -> list[dict]:
+    """Build Anthropic system blocks for the vrl_inline skill.
+
+    Block 1: persona + skill rules (cache_control: ephemeral).
+    Block 2: <facts> + <current_vrl> with markers + <logs>.
+    """
+    blocks: list[dict] = [
+        {
+            "type": "text",
+            "text": _BLOCK1_VRL_INLINE,
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+
+    safe_vrl = _sanitize_markers(request.current_vrl)
+    marked_vrl = _inject_marker(safe_vrl, request)
+    kept, truncated = _truncate_keeping_marker(marked_vrl, max_vrl_chars, request)
+
+    parts: list[str] = [
+        f"<facts><vrl_engine>{request.vrl_engine}</vrl_engine></facts>"
+    ]
+    if kept is not None:
+        attr = f' truncated_to="{max_vrl_chars}"' if truncated else ""
+        parts.append(
+            f"<current_vrl{attr}><![CDATA[{_safe_cdata(kept)}]]></current_vrl>"
+        )
+    if request.logs:
+        showing = min(len(request.logs), max_log_lines)
+        parts.append(f'<logs count="{len(request.logs)}" showing="{showing}">')
+        for i, raw in enumerate(request.logs[:max_log_lines]):
+            parts.append(
+                f'  <log index="{i + 1}"><![CDATA[{_safe_cdata(raw)}]]></log>'
+            )
+        parts.append("</logs>")
+
+    blocks.append({"type": "text", "text": "\n".join(parts)})
+    return blocks
+
 
 _SKILL_BLOCKS: dict[str, str] = {
     "log_explain":  _BLOCK1_LOG_EXPLAIN,

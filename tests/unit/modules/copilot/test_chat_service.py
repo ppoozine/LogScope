@@ -3,7 +3,7 @@
 import json
 from unittest.mock import MagicMock
 
-from app.modules.copilot.schemas import ChatRequest
+from app.modules.copilot.schemas import ChatRequest, InlineVrlRequest
 from app.modules.copilot.services.chat_service import ChatService
 
 
@@ -249,3 +249,122 @@ class TestModelDispatch:
         assert s._model_for("anomaly") == "claude-haiku-4-5"
         # log_explain stays on default
         assert s._model_for("log_explain") == "claude-haiku-4-5"
+
+
+# ---------------------------------------------------------------------------
+# TestStreamInline — stream_inline() for ⌘K inline VRL editor
+# ---------------------------------------------------------------------------
+
+
+def _service(skill_models=None, api_key="key"):
+    return ChatService(
+        anthropic_client=MagicMock(),
+        anthropic_api_key=api_key,
+        default_model="default-model",
+        skill_models=skill_models or {},
+        max_history=20,
+        max_log_lines_in_context=20,
+        max_vrl_chars_in_context=4000,
+        max_library_products_in_context=20,
+    )
+
+
+def _req():
+    return InlineVrlRequest(
+        instruction="x",
+        mode="insert",
+        current_vrl="",
+        cursor_offset=0,
+    )
+
+
+class _FakeStream:
+    def __init__(self, items):
+        self._items = items
+
+    async def __aenter__(self):
+        async def gen():
+            for it in self._items:
+                yield it
+        self.text_stream = gen()
+        return self
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class _FailStream:
+    async def __aenter__(self):
+        raise RuntimeError("boom")
+
+    async def __aexit__(self, *exc):
+        return False
+
+
+class TestStreamInline:
+    async def test_no_api_key_yields_error_done(self):
+        svc = _service(api_key=None)
+        events = [b async for b in svc.stream_inline(request=_req())]
+        assert len(events) == 2
+        assert b"no_api_key" in events[0]
+        assert b"event: done" in events[1]
+
+    async def test_uses_vrl_inline_model_override(self):
+        svc = _service(skill_models={"vrl_inline": "override-model"})
+        captured = {}
+
+        def stream_fn(**kw):
+            captured.update(kw)
+            return _FakeStream(["hello"])
+
+        svc._client = MagicMock()
+        svc._client.messages.stream = stream_fn
+
+        events = [b async for b in svc.stream_inline(request=_req())]
+        assert captured["model"] == "override-model"
+        assert captured["max_tokens"] == 1024
+        assert any(b"text_delta" in e for e in events)
+        assert b"event: done" in events[-1]
+
+    async def test_falls_back_to_default_model(self):
+        svc = _service()
+        captured = {}
+
+        def stream_fn(**kw):
+            captured.update(kw)
+            return _FakeStream([])
+
+        svc._client = MagicMock()
+        svc._client.messages.stream = stream_fn
+
+        _events = [b async for b in svc.stream_inline(request=_req())]
+        assert captured["model"] == "default-model"
+
+    async def test_anthropic_failure_yields_error_done(self):
+        svc = _service()
+        svc._client = MagicMock()
+        svc._client.messages.stream = lambda **kw: _FailStream()
+
+        events = [b async for b in svc.stream_inline(request=_req())]
+        assert any(b"anthropic_failed" in e for e in events)
+        assert b"event: done" in events[-1]
+
+    async def test_user_message_carries_instruction(self):
+        svc = _service()
+        captured = {}
+
+        def stream_fn(**kw):
+            captured.update(kw)
+            return _FakeStream([])
+
+        svc._client = MagicMock()
+        svc._client.messages.stream = stream_fn
+
+        req = InlineVrlRequest(
+            instruction="加 dst_ip",
+            mode="insert",
+            current_vrl="",
+            cursor_offset=0,
+        )
+        _events = [b async for b in svc.stream_inline(request=req)]
+        assert captured["messages"] == [{"role": "user", "content": "加 dst_ip"}]

@@ -2,7 +2,7 @@
 
 from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 SkillName = Literal["log_explain", "vrl_generate", "vrl_optimize", "anomaly"]
 
@@ -93,3 +93,32 @@ class ChatRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1, max_length=40)
     skill: SkillName | None = None
     page_context: PageContext | None = None
+
+
+InlineMode = Literal["insert", "replace"]
+
+
+class InlineVrlRequest(BaseModel):
+    instruction: str = Field(min_length=1, max_length=2_000)
+    mode: InlineMode
+    current_vrl: str = Field(default="", max_length=50_000)
+    cursor_offset: int | None = Field(default=None, ge=0)
+    selection_start: int | None = Field(default=None, ge=0)
+    selection_end: int | None = Field(default=None, ge=0)
+    vrl_engine: Literal["0.25", "0.32"] = "0.32"
+    logs: list[str] = Field(default_factory=list, max_length=50)
+
+    @model_validator(mode="after")
+    def _check_offsets(self) -> "InlineVrlRequest":
+        if self.mode == "insert":
+            if self.cursor_offset is None or self.cursor_offset > len(self.current_vrl):
+                raise ValueError("insert mode requires valid cursor_offset")
+        else:  # replace
+            if (
+                self.selection_start is None
+                or self.selection_end is None
+                or self.selection_start >= self.selection_end
+                or self.selection_end > len(self.current_vrl)
+            ):
+                raise ValueError("replace mode requires valid selection range")
+        return self
