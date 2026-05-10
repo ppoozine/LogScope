@@ -859,3 +859,56 @@ class TestBuildInlineSystemBlocks:
         # Original literal must have been sanitized so only one marker remains
         assert b2.count("<|cursor|>") == 1
         assert "<_cursor_>" in b2
+
+    def _req_fix(self, **kw):
+        defaults = dict(
+            instruction="Fix this",
+            skill="vrl_fix",
+            mode="replace",
+            current_vrl="abcdefghij",
+            selection_start=2,
+            selection_end=5,
+            compile_error="error[E110]: function `split` expected `string`, got `bytes`",
+            vrl_engine="0.32",
+        )
+        defaults.update(kw)
+        return InlineVrlRequest(**defaults)
+
+    def test_vrl_fix_uses_dedicated_block1(self):
+        blocks = build_inline_system_blocks(
+            self._req_fix(), max_log_lines=20, max_vrl_chars=4000,
+        )
+        b1 = blocks[0]["text"]
+        assert "VRL compile-error fixer" in b1
+        assert "<|sel_start|>" in b1
+        assert "Output ONLY raw VRL" in b1
+        assert "無法修復" in b1
+
+    def test_vrl_fix_block2_includes_compile_error(self):
+        blocks = build_inline_system_blocks(
+            self._req_fix(compile_error="error[E110]: WIRE_THIS_THROUGH"),
+            max_log_lines=20, max_vrl_chars=4000,
+        )
+        b2 = blocks[1]["text"]
+        assert "<compile_error>" in b2
+        assert "WIRE_THIS_THROUGH" in b2
+        assert "<|sel_start|>" in b2
+        assert "<|sel_end|>" in b2
+
+    def test_vrl_inline_block2_excludes_compile_error(self):
+        # default skill=vrl_inline (existing behavior) must NOT include compile_error block
+        blocks = build_inline_system_blocks(
+            self._req_insert(),  # existing helper (skill defaults to vrl_inline)
+            max_log_lines=20, max_vrl_chars=4000,
+        )
+        b2 = blocks[1]["text"]
+        assert "<compile_error>" not in b2
+
+    def test_vrl_fix_block1_differs_from_vrl_inline(self):
+        b1_fix = build_inline_system_blocks(
+            self._req_fix(), max_log_lines=20, max_vrl_chars=4000,
+        )[0]["text"]
+        b1_inline = build_inline_system_blocks(
+            self._req_insert(), max_log_lines=20, max_vrl_chars=4000,
+        )[0]["text"]
+        assert b1_fix != b1_inline
