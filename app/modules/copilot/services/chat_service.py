@@ -120,7 +120,7 @@ class ChatService:
 
         try:
             async with self._client.messages.stream(
-                model=self._model_for("vrl_inline"),
+                model=self._model_for(request.skill),
                 max_tokens=1024,
                 system=system_blocks,
                 messages=anthropic_messages,
