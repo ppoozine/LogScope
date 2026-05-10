@@ -45,6 +45,7 @@ async def get_chat_service(
         skill_models["vrl_optimize"] = settings.llm_copilot_vrl_model
         skill_models["vrl_inline"] = settings.llm_copilot_vrl_model
         skill_models["vrl_fix"] = settings.llm_copilot_vrl_model
+        skill_models["vrl_runtime_fix"] = settings.llm_copilot_vrl_model
 
     return ChatService(
         anthropic_client=cast(Any, client),
