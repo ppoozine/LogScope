@@ -13,6 +13,7 @@ import { ResultPane } from "@/components/analyzer/result-pane";
 import { SaveSampleDialog } from "@/components/analyzer/save-sample-dialog";
 import { SnippetsBar } from "@/components/analyzer/snippets-bar";
 import type { CheckCaller } from "@/components/analyzer/vrl-lint";
+import { setVrlFixDispatcher } from "@/components/analyzer/vrl-lint";
 import { Button } from "@/components/ui/button";
 import { ApiError, apiFetch } from "@/lib/api/client";
 import { useMatch, useParse } from "@/lib/api/queries/analyzer";
@@ -150,6 +151,29 @@ export function AnalyzerView({ preload, noKey }: Props) {
     }),
     [engineVersion, logs],
   );
+
+  // Register the VRL compile-error fix dispatcher so the linter's
+  // "Fix with Copilot" action can route into the inline VRL flow.
+  // Effect deps: only engineVersion — sendInlineRef is a ref (always stable),
+  // and fix does not need sample logs so we avoid re-registering on every
+  // logs change.
+  useEffect(() => {
+    setVrlFixDispatcher((view, diag) => {
+      const line = view.state.doc.lineAt(diag.from);
+      void sendInlineRef.current({
+        instruction: "Fix this VRL compile error",
+        skill: "vrl_fix",
+        mode: "replace",
+        current_vrl: view.state.doc.toString(),
+        selection_start: line.from,
+        selection_end: line.to,
+        vrl_engine: engineVersion,
+        logs: [],
+        compile_error: diag.message,
+      });
+    });
+    return () => setVrlFixDispatcher(null);
+  }, [engineVersion]);
 
   // Fire-and-forget /check call. We swallow network errors here (instead of
   // letting React Query bubble them through the dev overlay) — the linter
