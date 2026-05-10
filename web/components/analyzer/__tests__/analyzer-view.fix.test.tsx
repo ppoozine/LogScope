@@ -69,8 +69,9 @@ describe("AnalyzerView fix dispatcher wiring", () => {
   it("registers a dispatcher on mount", () => {
     render(<AnalyzerView preload={null} noKey={false} />);
     expect(setVrlFixDispatcher).toHaveBeenCalled();
-    const arg = (setVrlFixDispatcher as unknown as { mock: { calls: [unknown[]] } })
-      .mock.calls.at(-1)?.[0];
+    const arg = (setVrlFixDispatcher as unknown as { mock: { calls: [unknown[]] } }).mock.calls.at(
+      -1,
+    )?.[0];
     expect(typeof arg).toBe("function");
   });
 
