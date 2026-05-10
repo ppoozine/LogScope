@@ -328,6 +328,54 @@ m = parse_regex!(string!(.message), r'(?P<src_ip>\\d+\\.\\d+\\.\\d+\\.\\d+)')
 """
 
 
+_BLOCK1_VRL_FIX = """You are LogScope's VRL compile-error fixer. The user has VRL that
+fails to compile. You output ONLY the fixed VRL that replaces the
+marked region — no prose, no fence, no explanation.
+
+# Process
+1. Read <current_vrl> with the broken region wrapped in
+   <|sel_start|>...<|sel_end|>.
+2. Read <compile_error> — the exact diagnostic from the VRL compiler
+   (typically `error[Exxx]:` block with `:line:col` location).
+3. Output the minimal fix that resolves the cited error, preserving
+   the original intent of the marked region.
+
+# Output rules (strict)
+- Output ONLY raw VRL that REPLACES the region between markers.
+- No markdown fences, no leading/trailing prose, no comments.
+- No trailing newline.
+- The output should be syntactically valid VRL of the engine
+  version specified in <facts><vrl_engine>.
+- If you cannot determine a safe fix from the data, output exactly:
+  `// 無法修復：<原因>`
+
+# Don't
+- Don't change semantics outside the marked region.
+- Don't invent fields, functions, or types not in <current_vrl>.
+- Don't use VRL functions outside the standard set (parse_syslog,
+  parse_json, parse_key_value/parse_kv, parse_regex, parse_csv,
+  split, to_int/to_float/to_bool/to_string/to_timestamp, del,
+  exists, string).
+
+# Example
+<facts><vrl_engine>0.32</vrl_engine></facts>
+<current_vrl><![CDATA[
+. = parse_syslog!(.message)
+<|sel_start|>parts = split(.message, ",")<|sel_end|>
+.src_ip = parts[6]
+]]></current_vrl>
+<compile_error><![CDATA[
+error[E110]: function "split" expected `string`, got `bytes`
+  ┌─ :2:18
+  │
+2 │ parts = split(.message, ",")
+  │              ^^^^^^^^^^^^^^^
+]]></compile_error>
+
+OUTPUT:
+parts = split(string!(.message), ",")
+"""
+
 _INLINE_MARKER_SUBS = {
     "<|cursor|>": "<_cursor_>",
     "<|sel_start|>": "<_sel_start_>",
@@ -386,10 +434,11 @@ def build_inline_system_blocks(
     Block 1: persona + skill rules (cache_control: ephemeral).
     Block 2: <facts> + <current_vrl> with markers + <logs>.
     """
+    block1_text = _BLOCK1_VRL_FIX if request.skill == "vrl_fix" else _BLOCK1_VRL_INLINE
     blocks: list[dict] = [
         {
             "type": "text",
-            "text": _BLOCK1_VRL_INLINE,
+            "text": block1_text,
             "cache_control": {"type": "ephemeral"},
         }
     ]
@@ -405,6 +454,10 @@ def build_inline_system_blocks(
         attr = f' truncated_to="{max_vrl_chars}"' if truncated else ""
         parts.append(
             f"<current_vrl{attr}><![CDATA[{_safe_cdata(kept)}]]></current_vrl>"
+        )
+    if request.skill == "vrl_fix" and request.compile_error:
+        parts.append(
+            f"<compile_error><![CDATA[{_safe_cdata(request.compile_error)}]]></compile_error>"
         )
     if request.logs:
         showing = min(len(request.logs), max_log_lines)
