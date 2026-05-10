@@ -19,7 +19,9 @@ const DEFAULT_D5_PROPS = {
 
 describe("ResultPane", () => {
   it("renders empty hint when parseResult is null", () => {
-    render(<ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} {...DEFAULT_D5_PROPS} />);
+    render(
+      <ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} {...DEFAULT_D5_PROPS} />,
+    );
     expect(screen.getByText(/輸入 VRL/)).toBeInTheDocument();
   });
 
@@ -73,7 +75,9 @@ describe("ResultPane", () => {
   });
 
   it("save buttons disabled without log_type context", () => {
-    render(<ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} {...DEFAULT_D5_PROPS} />);
+    render(
+      <ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} {...DEFAULT_D5_PROPS} />,
+    );
     expect(screen.getByRole("button", { name: /存回 Library/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /存為 sample/ })).toBeDisabled();
   });

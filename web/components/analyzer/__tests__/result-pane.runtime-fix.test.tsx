@@ -6,11 +6,14 @@ import { useCopilotStore } from "@/lib/copilot/store";
 
 const startMock = vi.fn();
 const cancelMock = vi.fn();
-let mockState: { kind: "idle" } | { kind: "streaming"; chipId: string } | {
-  kind: "error";
-  message: string;
-  chipId: string;
-} = { kind: "idle" };
+let mockState:
+  | { kind: "idle" }
+  | { kind: "streaming"; chipId: string }
+  | {
+      kind: "error";
+      message: string;
+      chipId: string;
+    } = { kind: "idle" };
 
 vi.mock("@/lib/copilot/hooks/use-inline-runtime-fix", () => ({
   useInlineRuntimeFix: () => ({
