@@ -391,3 +391,99 @@ class TestInlineVrlRequest:
                 selection_end=5,
                 compile_error="x" * 20_001,
             )
+
+    def test_vrl_runtime_fix_valid_request(self):
+        vrl = ". = parse_syslog!(.message)\nparts = split(string!(.message), \",\")"
+        r = InlineVrlRequest(
+            instruction="Fix this",
+            skill="vrl_runtime_fix",
+            mode="replace",
+            current_vrl=vrl,
+            selection_start=0,
+            selection_end=len(vrl),
+            failing_log="<134>plain syslog no csv",
+            runtime_error="function call error: index out of bounds",
+        )
+        assert r.skill == "vrl_runtime_fix"
+        assert r.failing_log == "<134>plain syslog no csv"
+        assert r.runtime_error == "function call error: index out of bounds"
+
+    def test_vrl_runtime_fix_missing_failing_log(self):
+        vrl = "abcdefghij"
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_runtime_fix",
+                mode="replace",
+                current_vrl=vrl,
+                selection_start=0,
+                selection_end=len(vrl),
+                runtime_error="some error",
+            )
+
+    def test_vrl_runtime_fix_missing_runtime_error(self):
+        vrl = "abcdefghij"
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_runtime_fix",
+                mode="replace",
+                current_vrl=vrl,
+                selection_start=0,
+                selection_end=len(vrl),
+                failing_log="some log",
+            )
+
+    def test_vrl_runtime_fix_blank_failing_log(self):
+        vrl = "abcdefghij"
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_runtime_fix",
+                mode="replace",
+                current_vrl=vrl,
+                selection_start=0,
+                selection_end=len(vrl),
+                failing_log="   ",
+                runtime_error="some error",
+            )
+
+    def test_vrl_runtime_fix_requires_replace_mode(self):
+        vrl = "abcdefghij"
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_runtime_fix",
+                mode="insert",
+                current_vrl=vrl,
+                cursor_offset=0,
+                failing_log="some log",
+                runtime_error="some error",
+            )
+
+    def test_vrl_runtime_fix_requires_full_selection(self):
+        vrl = "abcdefghij"
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_runtime_fix",
+                mode="replace",
+                current_vrl=vrl,
+                selection_start=2,
+                selection_end=len(vrl),
+                failing_log="some log",
+                runtime_error="some error",
+            )
+
+    def test_vrl_runtime_fix_requires_non_empty_current_vrl(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_runtime_fix",
+                mode="replace",
+                current_vrl="",
+                selection_start=0,
+                selection_end=0,
+                failing_log="some log",
+                runtime_error="some error",
+            )

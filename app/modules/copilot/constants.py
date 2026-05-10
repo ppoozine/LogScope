@@ -12,6 +12,7 @@ SKILL_VRL_OPTIMIZE = "vrl_optimize"
 SKILL_ANOMALY = "anomaly"
 SKILL_VRL_INLINE = "vrl_inline"
 SKILL_VRL_FIX = "vrl_fix"
+SKILL_VRL_RUNTIME_FIX = "vrl_runtime_fix"
 
 # Error codes (machine-readable, frontend may switch on these)
 ERROR_NO_API_KEY = "no_api_key"

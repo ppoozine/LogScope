@@ -912,3 +912,58 @@ class TestBuildInlineSystemBlocks:
             self._req_insert(), max_log_lines=20, max_vrl_chars=4000,
         )[0]["text"]
         assert b1_fix != b1_inline
+
+    def _req_runtime_fix(self, **kw):
+        vrl = ". = parse_syslog!(.message)\nparts = split(string!(.message), \",\")\n.src_ip = parts[6]"
+        defaults = dict(
+            instruction="Fix runtime",
+            skill="vrl_runtime_fix",
+            mode="replace",
+            current_vrl=vrl,
+            selection_start=0,
+            selection_end=len(vrl),
+            failing_log="<134>plain-syslog-no-csv",
+            runtime_error="function call error: index 6 out of bounds (length: 1)",
+            vrl_engine="0.32",
+        )
+        defaults.update(kw)
+        return InlineVrlRequest(**defaults)
+
+    def test_vrl_runtime_fix_uses_dedicated_block1(self):
+        blocks = build_inline_system_blocks(
+            self._req_runtime_fix(), max_log_lines=20, max_vrl_chars=4000,
+        )
+        b1 = blocks[0]["text"]
+        assert "runtime parse-error fixer" in b1
+        assert "Output ONLY raw VRL" in b1
+        assert "無法修復" in b1
+
+    def test_vrl_runtime_fix_block2_includes_failing_log_and_runtime_error(self):
+        blocks = build_inline_system_blocks(
+            self._req_runtime_fix(
+                failing_log="WIRE_FAILING_LOG",
+                runtime_error="WIRE_RUNTIME_ERROR",
+            ),
+            max_log_lines=20, max_vrl_chars=4000,
+        )
+        b2 = blocks[1]["text"]
+        assert "<failing_log>" in b2
+        assert "WIRE_FAILING_LOG" in b2
+        assert "<runtime_error>" in b2
+        assert "WIRE_RUNTIME_ERROR" in b2
+
+    def test_vrl_runtime_fix_block2_no_selection_markers(self):
+        blocks = build_inline_system_blocks(
+            self._req_runtime_fix(), max_log_lines=20, max_vrl_chars=4000,
+        )
+        b2 = blocks[1]["text"]
+        assert "<|sel_start|>" not in b2
+        assert "<|sel_end|>" not in b2
+        assert "<|cursor|>" not in b2
+
+    def test_vrl_inline_and_vrl_fix_block2_excludes_failing_log(self):
+        b2_inline = build_inline_system_blocks(
+            self._req_insert(), max_log_lines=20, max_vrl_chars=4000,
+        )[1]["text"]
+        assert "<failing_log>" not in b2_inline
+        assert "<runtime_error>" not in b2_inline

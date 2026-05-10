@@ -376,6 +376,67 @@ OUTPUT:
 parts = split(string!(.message), ",")
 """
 
+_BLOCK1_VRL_RUNTIME_FIX = """You are LogScope's runtime parse-error fixer. The user's VRL compiles
+but fails to parse a specific log. You output ONLY a complete rewritten
+VRL that handles the failing log — no prose, no fence, no explanation.
+
+# Context
+You receive:
+- <current_vrl>: the user's current VRL (no markers; you replace it whole)
+- <failing_log>: the specific log line that failed to parse
+- <runtime_error>: the VRL runtime error message
+- <logs>: a sample of all logs (for context — confirm fix doesn't break others)
+
+# Process
+1. Read <runtime_error>. Identify root cause:
+   - missing field that current_vrl assumes exists
+   - wrong type (e.g., field is array not string)
+   - parse_* call failed on a structurally different log subtype
+2. Read <failing_log> and <logs>. Confirm the field/structure that
+   trips current_vrl.
+3. Rewrite <current_vrl> minimally to handle the failing case:
+   - prefer `??` fallback over removing logic
+   - prefer `if exists()` over rewriting whole flow
+   - DO NOT remove field extractions that work for other logs
+4. Output the COMPLETE rewritten VRL. The output replaces all of
+   <current_vrl>.
+
+# Output rules (strict)
+- Output ONLY raw VRL. No markdown fences, no prose, no comments.
+- No leading/trailing newline.
+- The output must be syntactically valid VRL of the engine version
+  in <facts><vrl_engine>.
+- If you cannot determine a fix from the data, output exactly:
+  `// 無法修復：<原因>`
+
+# Don't
+- Don't invent fields not in <logs>.
+- Don't hard-code values from <failing_log> as constants.
+- Don't use VRL functions outside the standard set (parse_syslog,
+  parse_json, parse_key_value/parse_kv, parse_regex, parse_csv,
+  split, to_int/to_float/to_bool/to_string/to_timestamp, del,
+  exists, string).
+
+# Example
+<facts><vrl_engine>0.32</vrl_engine></facts>
+<current_vrl><![CDATA[
+. = parse_syslog!(.message)
+parts = split(string!(.message), ",")
+.src_ip = parts[6]
+]]></current_vrl>
+<failing_log><![CDATA[
+<134>Jan 15 plain-syslog-no-csv-tail
+]]></failing_log>
+<runtime_error><![CDATA[
+function call error for "split": index 6 out of bounds (length: 1)
+]]></runtime_error>
+
+OUTPUT:
+. = parse_syslog!(.message)
+parts = split(string!(.message), ",")
+.src_ip = parts[6] ?? null
+"""
+
 _INLINE_MARKER_SUBS = {
     "<|cursor|>": "<_cursor_>",
     "<|sel_start|>": "<_sel_start_>",
@@ -434,7 +495,12 @@ def build_inline_system_blocks(
     Block 1: persona + skill rules (cache_control: ephemeral).
     Block 2: <facts> + <current_vrl> with markers + <logs>.
     """
-    block1_text = _BLOCK1_VRL_FIX if request.skill == "vrl_fix" else _BLOCK1_VRL_INLINE
+    if request.skill == "vrl_fix":
+        block1_text = _BLOCK1_VRL_FIX
+    elif request.skill == "vrl_runtime_fix":
+        block1_text = _BLOCK1_VRL_RUNTIME_FIX
+    else:
+        block1_text = _BLOCK1_VRL_INLINE
     blocks: list[dict] = [
         {
             "type": "text",
@@ -443,22 +509,40 @@ def build_inline_system_blocks(
         }
     ]
 
-    safe_vrl = _sanitize_markers(request.current_vrl)
-    marked_vrl = _inject_marker(safe_vrl, request)
-    kept, truncated = _truncate_keeping_marker(marked_vrl, max_vrl_chars, request)
+    parts: list[str] = [f"<facts><vrl_engine>{request.vrl_engine}</vrl_engine></facts>"]
 
-    parts: list[str] = [
-        f"<facts><vrl_engine>{request.vrl_engine}</vrl_engine></facts>"
-    ]
-    if kept is not None:
-        attr = f' truncated_to="{max_vrl_chars}"' if truncated else ""
+    if request.skill == "vrl_runtime_fix":
+        # No marker injection — selection covers whole VRL, replaced wholesale.
+        kept = request.current_vrl
+        if len(kept) > max_vrl_chars:
+            attr = f' truncated_to="{max_vrl_chars}"'
+            kept = kept[:max_vrl_chars]
+        else:
+            attr = ""
         parts.append(
             f"<current_vrl{attr}><![CDATA[{_safe_cdata(kept)}]]></current_vrl>"
         )
-    if request.skill == "vrl_fix" and request.compile_error:
         parts.append(
-            f"<compile_error><![CDATA[{_safe_cdata(request.compile_error)}]]></compile_error>"
+            f"<failing_log><![CDATA[{_safe_cdata(request.failing_log or '')}]]></failing_log>"
         )
+        parts.append(
+            f"<runtime_error><![CDATA[{_safe_cdata(request.runtime_error or '')}]]></runtime_error>"
+        )
+    else:
+        # vrl_inline / vrl_fix — inject markers, optionally drop block if marker truncated out
+        safe_vrl = _sanitize_markers(request.current_vrl)
+        marked_vrl = _inject_marker(safe_vrl, request)
+        kept, truncated = _truncate_keeping_marker(marked_vrl, max_vrl_chars, request)
+        if kept is not None:
+            attr = f' truncated_to="{max_vrl_chars}"' if truncated else ""
+            parts.append(
+                f"<current_vrl{attr}><![CDATA[{_safe_cdata(kept)}]]></current_vrl>"
+            )
+        if request.skill == "vrl_fix" and request.compile_error:
+            parts.append(
+                f"<compile_error><![CDATA[{_safe_cdata(request.compile_error)}]]></compile_error>"
+            )
+
     if request.logs:
         showing = min(len(request.logs), max_log_lines)
         parts.append(f'<logs count="{len(request.logs)}" showing="{showing}">')

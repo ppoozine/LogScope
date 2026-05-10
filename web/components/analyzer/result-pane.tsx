@@ -2,10 +2,9 @@
 
 import { useMemo, useRef, useState } from "react";
 
-import { useCopilot } from "@/components/providers/copilot-context";
 import { Button } from "@/components/ui/button";
 import type { components } from "@/lib/api/types";
-import { useStreamingChat } from "@/lib/copilot/hooks/use-streaming-chat";
+import { useInlineRuntimeFix } from "@/lib/copilot/hooks/use-inline-runtime-fix";
 import { cn } from "@/lib/utils";
 
 type ParseResponse = components["schemas"]["ParseResponse"];
@@ -18,6 +17,9 @@ type Props = {
   onSaveBackToLibrary?: () => void;
   onSaveAsSample?: () => void;
   hasLogTypeContext: boolean;
+  currentVrl: string;
+  vrlEngine: "0.25" | "0.32";
+  logs: string[];
 };
 
 export function ResultPane({
@@ -26,6 +28,9 @@ export function ResultPane({
   onSaveBackToLibrary,
   onSaveAsSample,
   hasLogTypeContext,
+  currentVrl,
+  vrlEngine,
+  logs,
 }: Props) {
   const [filter, setFilter] = useState("");
 
@@ -49,7 +54,14 @@ export function ResultPane({
       </header>
 
       <div className="min-h-[280px] overflow-auto p-3">
-        <ResultBody parseResult={parseResult} filter={filter} fields={fields} />
+        <ResultBody
+          parseResult={parseResult}
+          filter={filter}
+          fields={fields}
+          currentVrl={currentVrl}
+          vrlEngine={vrlEngine}
+          logs={logs}
+        />
       </div>
 
       <footer className="flex gap-2 border-t px-3 py-2">
@@ -114,10 +126,16 @@ function ResultBody({
   parseResult,
   filter,
   fields,
+  currentVrl,
+  vrlEngine,
+  logs,
 }: {
   parseResult: ParseResponse | null;
   filter: string;
   fields: FieldSchemaRead[];
+  currentVrl: string;
+  vrlEngine: "0.25" | "0.32";
+  logs: string[];
 }) {
   if (parseResult === null) {
     return <p className="text-xs text-muted-foreground">輸入 VRL 與 raw log 後自動 parse</p>;
@@ -150,7 +168,15 @@ function ResultBody({
         </div>
       )}
       {results.map((r) => (
-        <ResultCard key={r.index} result={r} filter={filter} fields={fields} />
+        <ResultCard
+          key={r.index}
+          result={r}
+          filter={filter}
+          fields={fields}
+          currentVrl={currentVrl}
+          vrlEngine={vrlEngine}
+          logs={logs}
+        />
       ))}
     </div>
   );
@@ -160,10 +186,16 @@ function ResultCard({
   result,
   filter,
   fields,
+  currentVrl,
+  vrlEngine,
+  logs,
 }: {
   result: ParseResultItem;
   filter: string;
   fields: FieldSchemaRead[];
+  currentVrl: string;
+  vrlEngine: "0.25" | "0.32";
+  logs: string[];
 }) {
   const ref = useRef<HTMLDetailsElement | null>(null);
 
@@ -205,7 +237,14 @@ function ResultCard({
         {isError ? (
           <div className="space-y-2">
             <pre className="whitespace-pre-wrap text-[11px] text-red-700">{result.error}</pre>
-            <AskCopilotChip index={result.index} input={result.input} error={result.error ?? ""} />
+            <RuntimeFixChip
+              index={result.index}
+              input={result.input}
+              error={result.error ?? ""}
+              currentVrl={currentVrl}
+              vrlEngine={vrlEngine}
+              logs={logs}
+            />
           </div>
         ) : (
           <GroupedFields output={result.output ?? {}} fields={fields} />
@@ -215,27 +254,59 @@ function ResultCard({
   );
 }
 
-function AskCopilotChip({ index, input, error }: { index: number; input: string; error: string }) {
-  const { open } = useCopilot();
-  const { send } = useStreamingChat();
+function RuntimeFixChip({
+  index,
+  input,
+  error,
+  currentVrl,
+  vrlEngine,
+  logs,
+}: {
+  index: number;
+  input: string;
+  error: string;
+  currentVrl: string;
+  vrlEngine: "0.25" | "0.32";
+  logs: string[];
+}) {
+  const chipId = `${index}-${input.slice(0, 16)}`;
+  const { state, start, cancel } = useInlineRuntimeFix();
+  const isThis = (state.kind === "streaming" || state.kind === "error") && state.chipId === chipId;
+  const isStreaming = isThis && state.kind === "streaming";
+  const isError = isThis && state.kind === "error";
+
   const handle = () => {
-    open();
-    // index is 0-based in ParseResultItem; add 1 to match user-facing 1-based
-    // numbering (and the <log index="N"> rendering in page_context).
-    const oneBased = index + 1;
-    const inputSnippet = input.length > 120 ? `${input.slice(0, 120)}…` : input;
-    void send(
-      `<logs> 第 ${oneBased} 筆 parse 失敗（input: \`${inputSnippet}\`、error: \`${error}\`）。請對照 <current_vrl> 與 <parse_results> 給修正方案，輸出 \`\`\`vrl ... \`\`\` 區塊並列「改了什麼」。`,
-      { skill: "vrl_generate" },
-    );
+    if (isStreaming) {
+      cancel();
+    } else {
+      start({
+        chipId,
+        currentVrl,
+        failingLog: input,
+        runtimeError: error,
+        vrlEngine,
+        logs,
+      });
+    }
   };
+
+  let label = "✨ 修復";
+  let cls = "border-purple-300 bg-purple-50 text-purple-800 hover:bg-purple-100";
+  if (isStreaming) {
+    label = "⌛ 生成中… (點取消)";
+    cls = "border-amber-300 bg-amber-50 text-amber-800";
+  } else if (isError && state.kind === "error") {
+    label = `⚠ ${state.message}（點重試）`;
+    cls = "border-red-300 bg-red-50 text-red-800";
+  }
+
   return (
     <button
       type="button"
       onClick={handle}
-      className="inline-flex items-center gap-1 rounded border border-purple-300 bg-purple-50 px-2 py-1 text-[11px] text-purple-800 hover:bg-purple-100"
+      className={cn("inline-flex items-center gap-1 rounded border px-2 py-1 text-[11px]", cls)}
     >
-      ✦ 問 Copilot 怎麼修
+      {label}
     </button>
   );
 }

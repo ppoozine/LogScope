@@ -405,6 +405,9 @@ export function AnalyzerView({ preload, noKey }: Props) {
             hasLogTypeContext={!!logTypeId}
             onSaveBackToLibrary={logTypeId ? handleSaveBackToLibrary : undefined}
             onSaveAsSample={logTypeId ? () => setSampleDialogOpen(true) : undefined}
+            currentVrl={vrl}
+            vrlEngine={engineVersion}
+            logs={logs ? logs.split("\n").filter((l) => l.length > 0) : []}
           />
         )}
       </div>

@@ -96,7 +96,7 @@ class ChatRequest(BaseModel):
 
 
 InlineMode = Literal["insert", "replace"]
-InlineSkill = Literal["vrl_inline", "vrl_fix"]
+InlineSkill = Literal["vrl_inline", "vrl_fix", "vrl_runtime_fix"]
 
 
 class InlineVrlRequest(BaseModel):
@@ -110,6 +110,8 @@ class InlineVrlRequest(BaseModel):
     vrl_engine: Literal["0.25", "0.32"] = "0.32"
     logs: list[str] = Field(default_factory=list, max_length=50)
     compile_error: str | None = Field(default=None, max_length=20_000)
+    failing_log: str | None = Field(default=None, max_length=20_000)
+    runtime_error: str | None = Field(default=None, max_length=20_000)
 
     @model_validator(mode="after")
     def _check_offsets(self) -> "InlineVrlRequest":
@@ -133,4 +135,22 @@ class InlineVrlRequest(BaseModel):
                 raise ValueError("vrl_fix skill requires non-empty compile_error")
             if self.mode != "replace":
                 raise ValueError("vrl_fix skill requires mode=replace")
+        return self
+
+    @model_validator(mode="after")
+    def _check_runtime_fix(self) -> "InlineVrlRequest":
+        if self.skill == "vrl_runtime_fix":
+            if self.failing_log is None or not self.failing_log.strip():
+                raise ValueError("vrl_runtime_fix skill requires non-empty failing_log")
+            if self.runtime_error is None or not self.runtime_error.strip():
+                raise ValueError("vrl_runtime_fix skill requires non-empty runtime_error")
+            if self.mode != "replace":
+                raise ValueError("vrl_runtime_fix skill requires mode=replace")
+            if self.selection_start != 0 or self.selection_end != len(self.current_vrl):
+                raise ValueError(
+                    "vrl_runtime_fix skill requires selection to cover entire current_vrl "
+                    "(selection_start=0, selection_end=len(current_vrl))"
+                )
+            if not self.current_vrl.strip():
+                raise ValueError("vrl_runtime_fix skill requires non-empty current_vrl")
         return self

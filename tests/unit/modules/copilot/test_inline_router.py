@@ -167,3 +167,54 @@ class TestInlineRoute:
         r = await client.post("/api/v1/copilot/inline/vrl", json=bad)
 
         assert r.status_code == 422
+
+    async def test_vrl_runtime_fix_returns_event_stream(
+        self, app: FastAPI, client: AsyncClient
+    ):
+        from app.modules.copilot.routers.chat_router import get_chat_service
+
+        fake = AsyncMock()
+        fake.stream_inline = lambda **kwargs: _fake_stream_gen()
+        app.dependency_overrides[get_chat_service] = lambda: fake
+        app.dependency_overrides[current_user] = _user
+
+        vrl = ". = parse_syslog!(.message)"
+        r = await client.post(
+            "/api/v1/copilot/inline/vrl",
+            json=_payload(
+                skill="vrl_runtime_fix",
+                mode="replace",
+                cursor_offset=None,
+                current_vrl=vrl,
+                selection_start=0,
+                selection_end=len(vrl),
+                failing_log="<134>plain syslog",
+                runtime_error="function call error",
+            ),
+        )
+
+        assert r.status_code == 200
+        assert "text/event-stream" in r.headers["content-type"]
+
+    async def test_vrl_runtime_fix_missing_failing_log(
+        self, app: FastAPI, client: AsyncClient
+    ):
+        from app.modules.copilot.routers.chat_router import get_chat_service
+
+        app.dependency_overrides[get_chat_service] = lambda: AsyncMock()
+        app.dependency_overrides[current_user] = _user
+
+        vrl = ". = parse_syslog!(.message)"
+        bad = _payload(
+            skill="vrl_runtime_fix",
+            mode="replace",
+            cursor_offset=None,
+            current_vrl=vrl,
+            selection_start=0,
+            selection_end=len(vrl),
+            runtime_error="some error",
+        )
+        bad = {k: v for k, v in bad.items() if v is not None}
+        r = await client.post("/api/v1/copilot/inline/vrl", json=bad)
+
+        assert r.status_code == 422

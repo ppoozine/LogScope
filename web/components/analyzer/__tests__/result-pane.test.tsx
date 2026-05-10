@@ -1,21 +1,27 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ResultPane } from "@/components/analyzer/result-pane";
 
-const openSpy = vi.fn();
-vi.mock("@/components/providers/copilot-context", () => ({
-  useCopilot: () => ({ isOpen: false, toggle: vi.fn(), close: vi.fn(), open: openSpy }),
+vi.mock("@/lib/copilot/hooks/use-inline-runtime-fix", () => ({
+  useInlineRuntimeFix: () => ({
+    state: { kind: "idle" },
+    start: vi.fn(),
+    cancel: vi.fn(),
+  }),
 }));
 
-const sendSpy = vi.fn();
-vi.mock("@/lib/copilot/hooks/use-streaming-chat", () => ({
-  useStreamingChat: () => ({ send: sendSpy, abort: vi.fn() }),
-}));
+const DEFAULT_D5_PROPS = {
+  currentVrl: ". = parse_syslog!(.message)",
+  vrlEngine: "0.32" as const,
+  logs: [],
+};
 
 describe("ResultPane", () => {
   it("renders empty hint when parseResult is null", () => {
-    render(<ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} />);
+    render(
+      <ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} {...DEFAULT_D5_PROPS} />,
+    );
     expect(screen.getByText(/輸入 VRL/)).toBeInTheDocument();
   });
 
@@ -30,6 +36,7 @@ describe("ResultPane", () => {
         }}
         fields={[]}
         hasLogTypeContext={false}
+        {...DEFAULT_D5_PROPS}
       />,
     );
     expect(screen.getByText("syntax oops")).toBeInTheDocument();
@@ -59,6 +66,7 @@ describe("ResultPane", () => {
         }}
         fields={[]}
         hasLogTypeContext={false}
+        {...DEFAULT_D5_PROPS}
       />,
     );
     expect(screen.getByText(/✓ 2/)).toBeInTheDocument();
@@ -67,15 +75,14 @@ describe("ResultPane", () => {
   });
 
   it("save buttons disabled without log_type context", () => {
-    render(<ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} />);
+    render(
+      <ResultPane parseResult={null} fields={[]} hasLogTypeContext={false} {...DEFAULT_D5_PROPS} />,
+    );
     expect(screen.getByRole("button", { name: /存回 Library/ })).toBeDisabled();
     expect(screen.getByRole("button", { name: /存為 sample/ })).toBeDisabled();
   });
 
-  it("renders ✦ Ask Copilot chip on error rows; click opens panel + sends vrl_generate", () => {
-    openSpy.mockReset();
-    sendSpy.mockReset();
-
+  it("renders RuntimeFixChip on error rows", () => {
     render(
       <ResultPane
         parseResult={{
@@ -99,24 +106,16 @@ describe("ResultPane", () => {
         }}
         fields={[]}
         hasLogTypeContext={false}
+        {...DEFAULT_D5_PROPS}
       />,
     );
 
-    const chip = screen.getByRole("button", { name: /問 Copilot 怎麼修/ });
+    const chip = screen.getByRole("button", { name: /修復/ });
     expect(chip).toBeInTheDocument();
-
-    fireEvent.click(chip);
-    expect(openSpy).toHaveBeenCalledTimes(1);
-    expect(sendSpy).toHaveBeenCalledTimes(1);
-    const [text, options] = sendSpy.mock.calls[0];
-    expect(text).toContain("第 2 筆"); // 0-based 1 → 1-based 2
-    expect(text).toContain("broken csv");
-    expect(text).toContain("field 'timestamp' missing");
-    expect(options).toEqual({ skill: "vrl_generate" });
+    expect(chip.textContent).toContain("✨");
   });
 
-  it("does not render ✦ Ask Copilot chip on success rows", () => {
-    sendSpy.mockReset();
+  it("does not render RuntimeFixChip on success rows", () => {
     render(
       <ResultPane
         parseResult={{
@@ -134,8 +133,9 @@ describe("ResultPane", () => {
         }}
         fields={[]}
         hasLogTypeContext={false}
+        {...DEFAULT_D5_PROPS}
       />,
     );
-    expect(screen.queryByRole("button", { name: /問 Copilot 怎麼修/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /修復/ })).toBeNull();
   });
 });
