@@ -170,7 +170,7 @@ export type PendingInsert = {
 // =============================================================
 
 export type InlineMode = "insert" | "replace";
-export type InlineSkill = "vrl_inline" | "vrl_fix";
+export type InlineSkill = "vrl_inline" | "vrl_fix" | "vrl_runtime_fix";
 
 /** Snake-case shape sent to backend POST /api/v1/copilot/inline/vrl. */
 export type InlineVrlRequest = {
@@ -184,6 +184,8 @@ export type InlineVrlRequest = {
   vrl_engine: "0.25" | "0.32";
   logs: string[];
   compile_error?: string;
+  failing_log?: string;
+  runtime_error?: string;
 };
 
 /** Same SSE event shape as panel chat (text_delta / error / done). */
