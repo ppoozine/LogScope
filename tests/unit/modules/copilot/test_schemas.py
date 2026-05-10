@@ -322,3 +322,72 @@ class TestInlineVrlRequest:
                 cursor_offset=0,
                 vrl_engine="0.99",
             )
+
+    def test_default_skill_is_vrl_inline(self):
+        r = InlineVrlRequest(
+            instruction="x",
+            mode="insert",
+            current_vrl="",
+            cursor_offset=0,
+        )
+        assert r.skill == "vrl_inline"
+
+    def test_vrl_fix_valid_request(self):
+        r = InlineVrlRequest(
+            instruction="Fix this",
+            skill="vrl_fix",
+            mode="replace",
+            current_vrl="abcdefghij",
+            selection_start=2,
+            selection_end=5,
+            compile_error="error[E110]: ...",
+        )
+        assert r.skill == "vrl_fix"
+        assert r.compile_error == "error[E110]: ..."
+
+    def test_vrl_fix_missing_compile_error(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_fix",
+                mode="replace",
+                current_vrl="abcdefghij",
+                selection_start=2,
+                selection_end=5,
+                # compile_error omitted
+            )
+
+    def test_vrl_fix_blank_compile_error(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_fix",
+                mode="replace",
+                current_vrl="abcdefghij",
+                selection_start=2,
+                selection_end=5,
+                compile_error="   ",
+            )
+
+    def test_vrl_fix_requires_replace_mode(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_fix",
+                mode="insert",
+                current_vrl="abcdefghij",
+                cursor_offset=0,
+                compile_error="error[E110]: ...",
+            )
+
+    def test_vrl_fix_compile_error_too_long(self):
+        with pytest.raises(ValidationError):
+            InlineVrlRequest(
+                instruction="x",
+                skill="vrl_fix",
+                mode="replace",
+                current_vrl="abcdefghij",
+                selection_start=2,
+                selection_end=5,
+                compile_error="x" * 20_001,
+            )

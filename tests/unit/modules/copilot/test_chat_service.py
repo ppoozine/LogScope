@@ -368,3 +368,41 @@ class TestStreamInline:
         )
         _events = [b async for b in svc.stream_inline(request=req)]
         assert captured["messages"] == [{"role": "user", "content": "加 dst_ip"}]
+
+    async def test_uses_vrl_fix_model_override(self):
+        svc = _service(skill_models={"vrl_fix": "fix-model", "vrl_inline": "inline-model"})
+        captured = {}
+
+        def stream_fn(**kw):
+            captured.update(kw)
+            return _FakeStream([])
+
+        svc._client = MagicMock()
+        svc._client.messages.stream = stream_fn
+
+        req = InlineVrlRequest(
+            instruction="x",
+            skill="vrl_fix",
+            mode="replace",
+            current_vrl="abcdefghij",
+            selection_start=2,
+            selection_end=5,
+            compile_error="error[E110]: ...",
+        )
+        _events = [b async for b in svc.stream_inline(request=req)]
+        assert captured["model"] == "fix-model"
+
+    async def test_vrl_inline_default_still_uses_inline_model(self):
+        svc = _service(skill_models={"vrl_inline": "inline-model", "vrl_fix": "fix-model"})
+        captured = {}
+
+        def stream_fn(**kw):
+            captured.update(kw)
+            return _FakeStream([])
+
+        svc._client = MagicMock()
+        svc._client.messages.stream = stream_fn
+
+        # default skill (no skill specified -> vrl_inline)
+        _events = [b async for b in svc.stream_inline(request=_req())]
+        assert captured["model"] == "inline-model"

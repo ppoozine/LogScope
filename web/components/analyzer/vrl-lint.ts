@@ -4,6 +4,14 @@ import type { Diagnostic } from "@codemirror/lint";
 import { linter } from "@codemirror/lint";
 import type { EditorView } from "@codemirror/view";
 
+type FixDispatcher = (view: EditorView, diag: Diagnostic) => void;
+
+let _fixDispatcher: FixDispatcher | null = null;
+
+export function setVrlFixDispatcher(dispatcher: FixDispatcher | null): void {
+  _fixDispatcher = dispatcher;
+}
+
 export type CheckCaller = (
   vrlSource: string,
 ) => Promise<{ kind: "ok" | "compile_error"; compile_error?: string | null }>;
@@ -74,6 +82,16 @@ export function parseVrlDiagnostics(compileError: string, view: EditorView): Dia
       severity: "error",
       message,
     });
+  }
+  for (const d of diagnostics) {
+    d.actions = [
+      {
+        name: "✨ Fix with Copilot",
+        apply: (v, _from, _to) => {
+          _fixDispatcher?.(v, d);
+        },
+      },
+    ];
   }
   return diagnostics;
 }
