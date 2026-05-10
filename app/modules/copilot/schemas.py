@@ -96,17 +96,20 @@ class ChatRequest(BaseModel):
 
 
 InlineMode = Literal["insert", "replace"]
+InlineSkill = Literal["vrl_inline", "vrl_fix"]
 
 
 class InlineVrlRequest(BaseModel):
     instruction: str = Field(min_length=1, max_length=2_000)
     mode: InlineMode
+    skill: InlineSkill = "vrl_inline"
     current_vrl: str = Field(default="", max_length=50_000)
     cursor_offset: int | None = Field(default=None, ge=0)
     selection_start: int | None = Field(default=None, ge=0)
     selection_end: int | None = Field(default=None, ge=0)
     vrl_engine: Literal["0.25", "0.32"] = "0.32"
     logs: list[str] = Field(default_factory=list, max_length=50)
+    compile_error: str | None = Field(default=None, max_length=20_000)
 
     @model_validator(mode="after")
     def _check_offsets(self) -> "InlineVrlRequest":
@@ -121,4 +124,13 @@ class InlineVrlRequest(BaseModel):
                 or self.selection_end > len(self.current_vrl)
             ):
                 raise ValueError("replace mode requires valid selection range")
+        return self
+
+    @model_validator(mode="after")
+    def _check_skill(self) -> "InlineVrlRequest":
+        if self.skill == "vrl_fix":
+            if self.compile_error is None or not self.compile_error.strip():
+                raise ValueError("vrl_fix skill requires non-empty compile_error")
+            if self.mode != "replace":
+                raise ValueError("vrl_fix skill requires mode=replace")
         return self
