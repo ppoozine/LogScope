@@ -2,7 +2,7 @@
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, Field, ValidationError
 
 from app.modules.llm_pipeline.exceptions import (
     SchemaMismatchError,
@@ -36,7 +36,11 @@ class _Field(BaseModel):
 
 class _ToolInput(BaseModel):
     log_type: _LogTypeMeta
-    fields: list[_Field]
+    # min_length=1 mirrors DRAFT_TOOL_SCHEMA's minItems=1 server-side, so even
+    # if the LLM ignores the schema (or a future SDK strips constraints) we
+    # reject empty fields up front rather than depending on the downstream
+    # self-consistency check.
+    fields: list[_Field] = Field(min_length=1)
     vrl_code: str
     engine_version: Literal["0.25", "0.32"] = "0.32"
     notes: str = ""

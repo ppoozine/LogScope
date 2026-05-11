@@ -84,6 +84,15 @@ class TestParseToolUse:
         with pytest.raises(SchemaMismatchError):
             parse_tool_use(resp)
 
+    def test_empty_fields_list_raises(self):
+        # Defense-in-depth: even if the LLM bypasses minItems, Pydantic
+        # rejects fields=[] at parse time rather than letting it slip
+        # through to the self-consistency or VRL-compile checks.
+        bad = {**_GOOD_PAYLOAD, "fields": []}
+        resp = _resp_with_tool_use(bad)
+        with pytest.raises(SchemaMismatchError):
+            parse_tool_use(resp)
+
 
 class TestCheckSelfConsistency:
     def _draft(self, vrl: str, field_names: list[str]):
