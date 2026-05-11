@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from app.common.auth import current_user
 from app.core.config import Settings, get_settings
+from app.core.deps import get_anthropic_client
 from app.modules.auth.models.user import User
 from app.modules.copilot.schemas import ChatRequest
 from app.modules.copilot.services.chat_service import ChatService
@@ -32,13 +33,10 @@ def _validate_last_message_is_user(req: ChatRequest) -> ChatRequest:
 
 async def get_chat_service(
     settings: Annotated[Settings, Depends(get_settings)],
+    client: Annotated[anthropic.AsyncAnthropic, Depends(get_anthropic_client)],
 ) -> ChatService:
-    """Construct ChatService. Always builds a real AsyncAnthropic client; service
-    short-circuits to error event when api key is unset."""
-    client = anthropic.AsyncAnthropic(
-        api_key=settings.anthropic_api_key or "placeholder"
-    )
-
+    """Construct ChatService. Service short-circuits to error event when api
+    key is unset, so the placeholder client is never actually called."""
     skill_models: dict[str, str] = {}
     if settings.llm_copilot_vrl_model:
         skill_models["vrl_generate"] = settings.llm_copilot_vrl_model

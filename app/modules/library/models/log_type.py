@@ -29,6 +29,16 @@ class LogType(Base, TimestampMixin):
     transport: Mapped[str | None] = mapped_column(String(20), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", index=True)
     source: Mapped[str] = mapped_column(String(20), nullable=False, default="manual")
+    source_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "llm_generation_jobs.id",
+            use_alter=True,
+            name="fk_log_types_source_job",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
     current_parse_rule_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),
         ForeignKey(

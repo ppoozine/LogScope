@@ -29,6 +29,7 @@ def _make_rule() -> ParseRule:
     pr.vrl_code = "."
     pr.engine_version = "0.32"
     pr.status = "draft"
+    pr.source = "manual"
     pr.notes = None
     pr.created_at = datetime.now(UTC)
     pr.updated_at = datetime.now(UTC)

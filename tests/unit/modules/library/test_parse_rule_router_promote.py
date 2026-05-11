@@ -32,6 +32,7 @@ def _rule(status: str = "published") -> ParseRule:
     r.vrl_code = "."
     r.engine_version = "0.32"
     r.status = status
+    r.source = "manual"
     r.created_at = datetime.now(UTC)
     r.updated_at = datetime.now(UTC)
     return r
