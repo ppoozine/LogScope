@@ -66,3 +66,17 @@ async def get_db_session() -> AsyncGenerator[AsyncSession]:
     """FastAPI Depends: yield AsyncSession bound to current request."""
     async for session in get_database().session():
         yield session
+
+
+def get_db_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    """Return the project's AsyncSession factory.
+
+    Used by code paths (e.g. llm_pipeline job repo) that need to open
+    independent transactions outside the request-scope session — the
+    audit-row write must succeed even when the surrounding transaction
+    rolls back.
+    """
+    db = get_database()
+    if db._sessionmaker is None:
+        raise RuntimeError("Database not connected")
+    return db._sessionmaker

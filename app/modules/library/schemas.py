@@ -11,13 +11,14 @@ from pydantic import BaseModel, ConfigDict, Field
 VendorStatus = Literal["active", "inactive"]
 ProductStatus = Literal["active", "inactive"]
 DeployType = Literal["cloud", "on_prem", "hybrid"]
-LogTypeStatus = Literal["draft", "published"]
-LogTypeSource = Literal["manual"]
+LogTypeStatus = Literal["draft", "llm_draft", "published"]
+LogTypeSource = Literal["manual", "llm_generated"]
 LogFormat = Literal["syslog", "json", "cef", "leef", "csv", "other"]
 LogTransport = Literal["syslog_udp", "syslog_tcp", "http", "file", "other"]
 FieldType = Literal["string", "int", "float", "bool", "timestamp", "ip", "object", "array"]
 EngineVersion = Literal["0.25", "0.32"]
-ParseRuleStatus = Literal["draft", "published", "archived"]
+ParseRuleStatus = Literal["draft", "llm_draft", "published", "archived"]
+ParseRuleSource = Literal["manual", "llm_generated"]
 SampleLabel = Literal["normal", "edge_case", "error"]
 
 
@@ -153,6 +154,7 @@ class ParseRuleRead(BaseModel):
     vrl_code: str
     engine_version: EngineVersion
     status: ParseRuleStatus
+    source: ParseRuleSource
     notes: str | None
     created_at: datetime
     updated_at: datetime

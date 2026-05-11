@@ -13,6 +13,10 @@ from app.modules.library.routers.product_router import router as product_router
 from app.modules.library.routers.sample_log_router import router as sample_log_router
 from app.modules.library.routers.stats_router import router as library_stats_router
 from app.modules.library.routers.vendor_router import router as vendor_router
+from app.modules.llm_pipeline.routers.doc_router import router as llm_pipeline_doc_router
+from app.modules.llm_pipeline.routers.draft_router import (
+    router as llm_pipeline_draft_router,
+)
 
 router = APIRouter(prefix="/api/v1")
 router.include_router(auth_router, prefix="/auth", tags=["auth"])
@@ -28,3 +32,7 @@ router.include_router(analyzer_parse_router, prefix="/analyzer", tags=["analyzer
 router.include_router(analyzer_match_router, prefix="/analyzer", tags=["analyzer"])
 router.include_router(copilot_chat_router, prefix="/copilot", tags=["copilot"])
 router.include_router(copilot_inline_router, prefix="/copilot", tags=["copilot:inline"])
+router.include_router(llm_pipeline_doc_router, prefix="/llm-pipeline", tags=["llm-pipeline:docs"])
+router.include_router(
+    llm_pipeline_draft_router, prefix="/llm-pipeline", tags=["llm-pipeline:drafts"]
+)

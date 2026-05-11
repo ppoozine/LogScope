@@ -37,6 +37,11 @@ class Settings(BaseSettings):
         20, alias="LLM_COPILOT_MAX_LIBRARY_PRODUCTS_IN_CONTEXT"
     )
 
+    # E2 LLM pipeline (draft generation). Defaults to Opus per spec §3.2.1.
+    llm_pipeline_draft_model: str = Field(
+        "claude-opus-4-7", alias="LLM_PIPELINE_DRAFT_MODEL"
+    )
+
     clickhouse_url: str | None = Field(default=None, alias="CLICKHOUSE_URL")
 
 

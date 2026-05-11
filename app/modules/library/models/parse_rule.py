@@ -26,6 +26,19 @@ class ParseRule(Base, TimestampMixin):
     vrl_code: Mapped[str] = mapped_column(Text, nullable=False)
     engine_version: Mapped[str] = mapped_column(String(10), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", index=True)
+    source: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="manual"
+    )
+    source_job_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey(
+            "llm_generation_jobs.id",
+            use_alter=True,
+            name="fk_parse_rules_source_job",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_by: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True),

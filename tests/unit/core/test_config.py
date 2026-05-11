@@ -79,3 +79,28 @@ def test_copilot_d2_vrl_model_override(monkeypatch):
 
     s = Settings(_env_file=None)  # type: ignore[call-arg]
     assert s.llm_copilot_vrl_model == "claude-sonnet-4-6"
+
+
+def test_llm_pipeline_draft_model_default(monkeypatch) -> None:
+    """E2 LLM pipeline draft model should default to claude-opus-4-7."""
+    monkeypatch.delenv("LLM_PIPELINE_DRAFT_MODEL", raising=False)
+    # Required fields still need values when bypassing .env:
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://t:t@localhost:5432/t")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_EMAIL", "a@b.c")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_PASSWORD", "x")
+
+    s = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert s.llm_pipeline_draft_model == "claude-opus-4-7"
+
+
+def test_llm_pipeline_draft_model_from_env(monkeypatch) -> None:
+    """E2 LLM pipeline draft model should be overridable via env."""
+    monkeypatch.setenv("LLM_PIPELINE_DRAFT_MODEL", "claude-sonnet-4-6")
+    monkeypatch.setenv("DATABASE_URL", "postgresql+asyncpg://t:t@localhost:5432/t")
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379/0")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_EMAIL", "a@b.c")
+    monkeypatch.setenv("LOGSCOPE_ADMIN_PASSWORD", "x")
+
+    s = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert s.llm_pipeline_draft_model == "claude-sonnet-4-6"

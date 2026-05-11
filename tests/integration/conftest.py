@@ -10,7 +10,7 @@ from collections.abc import AsyncGenerator
 import pytest
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 
 def pytest_configure(config):  # type: ignore[no-untyped-def]
@@ -50,5 +50,20 @@ async def db_session() -> AsyncGenerator[AsyncSession]:
             async with session.begin():
                 yield session
                 await session.rollback()
+    finally:
+        await db.disconnect()
+
+
+@pytest.fixture
+async def db_session_factory() -> AsyncGenerator[async_sessionmaker[AsyncSession]]:
+    """Yield the project's async_sessionmaker for tests that need to open
+    independent sessions (e.g. job repo's 3-tx pattern)."""
+    from app.core.config import get_settings
+    from app.core.database import get_db_sessionmaker, init_database
+
+    db = init_database(get_settings().database_url)
+    await db.connect()
+    try:
+        yield get_db_sessionmaker()
     finally:
         await db.disconnect()

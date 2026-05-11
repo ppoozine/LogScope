@@ -10,6 +10,7 @@ from app.common.auth import current_user
 from app.common.schemas import DataResponse
 from app.core.config import Settings, get_settings
 from app.core.database import get_db_session
+from app.core.deps import get_anthropic_client
 from app.modules.analyzer.repositories.catalog_repository import CatalogRepository
 from app.modules.analyzer.schemas import MatchRequest, MatchResponse
 from app.modules.analyzer.services.match_service import MatchService
@@ -21,14 +22,13 @@ router = APIRouter()
 async def get_match_service(
     session: Annotated[AsyncSession, Depends(get_db_session)],
     settings: Annotated[Settings, Depends(get_settings)],
+    client: Annotated[anthropic.AsyncAnthropic, Depends(get_anthropic_client)],
 ) -> MatchService:
     """Construct MatchService from DI dependencies.
 
-    Always builds an AsyncAnthropic client; service short-circuits to empty
-    candidates when ``anthropic_api_key`` is unset, so the placeholder key
-    here is never exercised against the real API.
+    Service short-circuits to empty candidates when ``anthropic_api_key`` is
+    unset, so the placeholder client is never actually called.
     """
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key or "placeholder")
     return MatchService(
         catalog_repo=CatalogRepository(session),
         anthropic_client=cast(Any, client),

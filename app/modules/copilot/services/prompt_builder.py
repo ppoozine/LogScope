@@ -3,6 +3,7 @@
 from xml.sax.saxutils import quoteattr
 
 from app.modules.copilot.schemas import InlineVrlRequest, PageContext
+from app.modules.copilot.services._vrl_cheatsheet import VRL_CHEATSHEET
 
 
 def _safe_cdata(text: str) -> str:
@@ -83,51 +84,16 @@ The user opened Copilot without a page context. Answer general log / VRL /
 security questions briefly and helpfully.
 """
 
-_BLOCK1_VRL_GENERATE = """
+_BLOCK1_VRL_GENERATE = (
+    """
 # Skill: vrl_generate
 
 You are generating VRL (Vector Remap Language) parse rules. The user has
 raw logs in <logs> and possibly partial VRL in <current_vrl>.
 
-## VRL function cheatsheet (engine 0.32)
-
-These are the functions you should reach for first. Do NOT invent
-function names — if it's not here and you're not sure, say so.
-
-- `parse_syslog!(.message)` — parses RFC 5424/3164 header into root.
-  Sets `.appname`, `.hostname`, `.severity`, `.facility`, `.timestamp`,
-  and leaves the body as `.message`.
-- `parse_json!(.message)` — parses a JSON object; fields become root
-  fields. Use `??` if some logs aren't JSON.
-- `parse_key_value!(.message, key_value_delimiter: "=", field_delimiter: " ")`
-  — k=v pairs (CEF, many SIEM formats).
-- `parse_regex!(string, r'(?P<name>regex)')` — named capture groups
-  return a map. Use for vendor-specific layouts.
-- `parse_csv!(string)` — string array; index `[0]`, `[1]`...
-- `split(string, ",")` — same shape as parse_csv but no quoting rules.
-- Conversion: `to_int!`, `to_float!`, `to_bool!`, `to_string!`,
-  `to_timestamp!(s, "%Y-%m-%d %H:%M:%S")` (strptime format).
-- `del(.field)` — remove a field (use for redaction or cleanup).
-- `if exists(.field) { ... }` — conditional on optional fields.
-- `string!(.x)` — coerce/assert a value is string (use before `split`).
-
-### Suffixes — get this right or it won't compile
-
-- `!` — fail-fast: aborts the whole event if the call errors. Use when
-  the input is structurally guaranteed (e.g., `parse_json!` after you've
-  established the log IS json).
-- `??` — fallback: returns the right-hand value on error.
-  `parse_json(.x) ?? {}` never aborts; you can then check fields.
-- Functions that return a `Result` (almost all parse_* and to_*) MUST
-  use `!` or `??`. Bare calls are compile errors.
-
-### 0.25 vs 0.32 syntax
-
-Default to 0.32 unless `<facts><vrl_engine>` says otherwise.
-- 0.32 added `parse_key_value`; on 0.25 use `parse_kv` instead.
-- Both support `parse_syslog`, `parse_json`, `parse_regex`, `split`.
-
-## Process (follow in order)
+"""
+    + VRL_CHEATSHEET
+    + """## Process (follow in order)
 
 1. Read <logs>; identify FORMAT (json / syslog / cef / leef / kv / csv /
    plain text). Cite the structural cue.
@@ -198,6 +164,7 @@ del(.ts)
 - 假設所有 logs 都是 JSON；若樣本中有 plain text 行請改 `parse_json(...) ?? {}`
 - `del(.ts)` 用 .timestamp 取代原欄位，保持 schema 一致
 """
+)
 
 _BLOCK1_VRL_OPTIMIZE = """
 # Skill: vrl_optimize
