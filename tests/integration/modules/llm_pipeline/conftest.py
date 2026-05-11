@@ -44,10 +44,11 @@ async def seed_vendor_product(
     db_session: AsyncSession,
 ) -> tuple[Vendor, Product]:
     """Insert a fresh Vendor + Product pair for the test."""
+    unique = uuid.uuid4().hex[:6]
     vendor = Vendor(
         id=uuid.uuid4(),
-        name="Acme",
-        slug=f"acme-{uuid.uuid4().hex[:6]}",
+        name=f"Acme-{unique}",
+        slug=f"acme-{unique}",
         status="active",
     )
     db_session.add(vendor)

@@ -21,10 +21,11 @@ pytestmark = [pytest.mark.asyncio, pytest.mark.integration]
 
 
 async def _seed(db_session) -> tuple[Vendor, Product, Doc]:
+    unique = uuid.uuid4().hex[:6]
     v = Vendor(
         id=uuid.uuid4(),
-        name="x",
-        slug=f"v-{uuid.uuid4().hex[:6]}",
+        name=f"V-{unique}",
+        slug=f"v-{unique}",
         status="active",
     )
     db_session.add(v)

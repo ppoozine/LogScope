@@ -109,10 +109,11 @@ def _noop_validator(code: str, *, engine_version: str) -> None:
 
 
 async def _seed_minimal(db_session: AsyncSession) -> tuple[Vendor, Product, Doc]:
+    unique = uuid.uuid4().hex[:6]
     v = Vendor(
         id=uuid.uuid4(),
-        name="Acme",
-        slug=f"acme-{uuid.uuid4().hex[:6]}",
+        name=f"Acme-{unique}",
+        slug=f"acme-{unique}",
         status="active",
     )
     db_session.add(v)
